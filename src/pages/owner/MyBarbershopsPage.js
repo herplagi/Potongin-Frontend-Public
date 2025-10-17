@@ -2,52 +2,49 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
-import { FiPlus, FiUsers, FiScissors } from 'react-icons/fi';
+import { FiPlus, FiUsers, FiScissors, FiBarChart2 } from 'react-icons/fi';
 
-// Komponen untuk ditampilkan jika owner belum mendaftarkan barbershop sama sekali
+// Komponen Tampilan jika owner belum punya barbershop
 const NotRegisteredView = () => (
     <div className="text-center max-w-3xl mx-auto mt-10 p-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl shadow-lg">
         <h1 className="text-4xl font-extrabold text-white">Anda Belum Memiliki Barbershop</h1>
-        <p className="mt-4 text-lg text-indigo-100">Jangkau ribuan pelanggan baru setiap hari dengan mendaftarkan barbershop Anda.</p>
+        <p className="mt-4 text-lg text-indigo-100">Jangkau ribuan pelanggan baru dengan mendaftarkan barbershop Anda.</p>
         <Link to="/register-barbershop" className="inline-block px-8 py-3 mt-8 text-lg font-bold text-indigo-600 bg-white rounded-lg shadow-md hover:bg-gray-100 transition-transform transform hover:scale-105">
             Daftarkan Barbershop Pertama Anda
         </Link>
     </div>
 );
 
-// Komponen untuk menampilkan setiap item barbershop di dalam daftar
+// Komponen untuk setiap item barbershop
 const BarbershopListItem = ({ shop, onResubmit }) => {
-    // Helper untuk mendapatkan badge status berwarna
     const getStatusBadge = () => {
         const baseClasses = "px-3 py-1 text-xs font-semibold rounded-full";
         switch (shop.approval_status) {
-            case 'approved':
-                return <span className={`${baseClasses} bg-green-100 text-green-800`}>Disetujui</span>;
-            case 'rejected':
-                return <span className={`${baseClasses} bg-red-100 text-red-800`}>Ditolak</span>;
-            case 'pending':
-                return <span className={`${baseClasses} bg-yellow-100 text-yellow-800`}>Pending</span>;
-            default:
-                return null;
+            case 'approved': return <span className={`${baseClasses} bg-green-100 text-green-800`}>Disetujui</span>;
+            case 'rejected': return <span className={`${baseClasses} bg-red-100 text-red-800`}>Ditolak</span>;
+            case 'pending': return <span className={`${baseClasses} bg-yellow-100 text-yellow-800`}>Pending</span>;
+            default: return null;
         }
     };
 
-    // Helper untuk menampilkan tombol aksi yang sesuai dengan status
     const getActionButtons = () => {
         switch (shop.approval_status) {
             case 'approved':
                 return (
                     <div className="flex space-x-2">
+                        <Link to={`/owner/barbershop/${shop.barbershop_id}/dashboard`} className="flex items-center px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700" title="Dashboard & KPI">
+                            <FiBarChart2 /> <span className="hidden sm:inline ml-2">Dashboard</span>
+                        </Link>
                         <Link to={`/owner/barbershop/${shop.barbershop_id}/services`} className="flex items-center px-3 py-1 text-sm text-white bg-blue-600 rounded-md hover:bg-blue-700" title="Kelola Layanan">
                             <FiScissors /> <span className="hidden sm:inline ml-2">Layanan</span>
                         </Link>
-                        <Link to={`/owner/barbershop/${shop.barbershop_id}/staff`} className="flex items-center px-3 py-1 text-sm text-white bg-indigo-600 rounded-md hover:bg-indigo-700" title="Kelola Staf">
+                        <Link to={`/owner/barbershop/${shop.barbershop_id}/staff`} className="flex items-center px-3 py-1 text-sm text-white bg-gray-700 rounded-md hover:bg-gray-800" title="Kelola Staf">
                             <FiUsers /> <span className="hidden sm:inline ml-2">Staf</span>
                         </Link>
                     </div>
                 );
             case 'rejected':
-                return <Link to={`/owner/barbershop/${shop.barbershop_id}/edit`} className="px-3 py-1 text-sm text-white bg-yellow-600 rounded-md hover:bg-yellow-700">Perbaiki & Ajukan Ulang</Link>;
+                return <Link to={`/owner/barbershop/${shop.barbershop_id}/edit`} className="px-3 py-1 text-sm text-white bg-yellow-600 rounded-md hover:bg-yellow-700">Perbaiki</Link>;
             default:
                 return null; // Tidak ada aksi untuk status 'pending'
         }

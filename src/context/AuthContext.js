@@ -31,20 +31,40 @@ export const AuthProvider = ({ children }) => {
         api.defaults.headers.common[
           "Authorization"
         ] = `Bearer ${tokenFromStorage}`;
-        setUser(decodedToken);
+
+        const decodedToken = jwtDecode(tokenFromStorage);
+        // ✅ UPDATED: Include multi-role flags
+        setUser({
+          id: decodedToken.id,
+          name: decodedToken.name,
+          email: decodedToken.email,
+          role: decodedToken.role,
+          is_customer: decodedToken.is_customer,
+          is_owner: decodedToken.is_owner, 
+        });
       }
     }
     setLoading(false);
   }, []);
 
   const login = useCallback(async (email, password) => {
-    const response = await api.post("/auth/login", { email, password });
-    const { token: receivedToken } = response.data;
-    localStorage.setItem("token", receivedToken);
-    setToken(receivedToken);
-    api.defaults.headers.common["Authorization"] = `Bearer ${receivedToken}`;
-    setUser(jwtDecode(receivedToken));
-  }, []);
+  const response = await api.post("/auth/login", { email, password });
+  const { token: receivedToken } = response.data;
+  localStorage.setItem("token", receivedToken);
+  setToken(receivedToken);
+  api.defaults.headers.common["Authorization"] = `Bearer ${receivedToken}`;
+  
+  const decodedToken = jwtDecode(receivedToken);
+  // ✅ UPDATED: Include multi-role flags
+  setUser({
+    id: decodedToken.id,
+    name: decodedToken.name,
+    email: decodedToken.email,
+    role: decodedToken.role,
+    is_customer: decodedToken.is_customer,  // ✅ NEW
+    is_owner: decodedToken.is_owner,        // ✅ NEW
+  });
+}, []);
 
   const logout = useCallback(() => {
     setUser(null);

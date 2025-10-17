@@ -4,52 +4,66 @@ import {
   Routes,
   Route,
   Navigate,
-  Outlet, // Impor Outlet untuk layout terproteksi
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
-// Layouts & Wrapper
-import OwnerLayout from "./components/owner/OwnerLayout";
+// Layout & Wrapper
+import MainLayout from "./components/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 // Halaman Publik
+import BarbershopListPage from "./pages/public/BarbershopListPage";
+import BarbershopDetailPage from "./pages/public/BarbershopDetailPage";
+
+// Halaman Autentikasi
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 
 // Halaman Customer
-import CustomerDashboardPage from "./pages/customer/CustomerDashboardPage";
+import DashboardPage from "./pages/DashboardPage";
+import MyBookingsPage from "./pages/customer/MyBookingsPage";
 
 // Halaman Owner
 import RegisterBarbershopPage from "./pages/owner/RegisterBarbershopPage";
-import OwnerDashboardPage from "./pages/owner/OwnerDashboardPage";
-import MyBarbershopsPage from "./pages/owner/MyBarbershopsPage"; // <-- Impor halaman baru
+import MyBarbershopsPage from "./pages/owner/MyBarbershopsPage";
+import EditBarbershopPage from "./pages/owner/EditBarbershopPage";
 import ManageServicesPage from "./pages/owner/ManageServicesPage";
 import ManageStaffPage from "./pages/owner/ManageStaffPage";
-import EditBarbershopPage from './pages/owner/EditBarbershopPage';
+import OwnerDashboardPage from "./pages/owner/OwnerDashboardPage";
+import ManageBookingsPage from "./pages/owner/ManageBookingsPage"; // ✅ NEW
+import BarbershopProfilePage from "./pages/owner/BarbershopProfilePage"; // ✅ NEW
 
-// Komponen untuk mengarahkan pengguna setelah login berdasarkan peran
 const HomeRedirect = () => {
   const { user } = useAuth();
-  if (user?.role === "owner") return <Navigate to="/owner/dashboard" />;
-  if (user?.role === "customer") return <Navigate to="/customer/dashboard" />;
-  return <Navigate to="/login" />;
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // ✅ UPDATED: Priority Owner > Customer
+  if (user.is_owner) {
+    return <Navigate to="/owner/my-barbershops" replace />;
+  }
+  
+  if (user.is_customer) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return <Navigate to="/login" replace />;
 };
 
-// Komponen Wrapper untuk semua rute yang membutuhkan login
-// Ini membuat kode lebih bersih daripada membungkus setiap rute satu per satu
-const ProtectedLayout = () => (
-  <ProtectedRoute>
-    <Outlet />
-  </ProtectedRoute>
-);
-
-// Komponen yang berisi semua logika routing
-const AppRoutes = () => {
+const AppContent = () => {
   const { loading } = useAuth();
+  
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <p className="text-xl">Loading Aplikasi...</p>
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mx-auto mb-4"></div>
+          <p className="text-white text-lg font-semibold">Memuat aplikasi...</p>
+        </div>
       </div>
     );
   }
@@ -57,46 +71,103 @@ const AppRoutes = () => {
   return (
     <Router>
       <Routes>
-        {/* Rute Publik (Bisa diakses tanpa login) */}
+        {/* --- Rute Publik (Bisa diakses siapa saja) --- */}
+        <Route path="/barbershops" element={<BarbershopListPage />} />
+        <Route
+          path="/barbershops/detail/:id"
+          element={<BarbershopDetailPage />}
+        />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* --- Grup Rute Terlindungi --- */}
-        {/* Semua rute di dalam sini akan dicek oleh ProtectedRoute terlebih dahulu */}
-        <Route element={<ProtectedLayout />}>
-          <Route path="/" element={<HomeRedirect />} />
-          <Route path="/customer/dashboard" element={<CustomerDashboardPage />} />
-          <Route path="/register-barbershop" element={<RegisterBarbershopPage />} />
-
-          {/* Grup Rute Khusus Owner dengan Layout Sidebar */}
-          <Route element={<OwnerLayout />}>
-            <Route path="/owner/dashboard" element={<OwnerDashboardPage />} />
-            <Route path="/owner/my-barbershops" element={<MyBarbershopsPage />} />
-            <Route path="/owner/barbershop/:barbershopId/edit" element={<EditBarbershopPage />} />
-            <Route
-              path="/owner/barbershop/:barbershopId/services"
-              element={<ManageServicesPage />}
-            />
-            {/* --- PERBAIKAN DI SINI --- */}
-            <Route
-              path="/owner/barbershop/:barbershopId/staff" 
-              element={<ManageStaffPage />}
-            />
-          </Route>
+        {/* --- Grup Rute Terlindungi (Harus Login & Punya Sidebar) --- */}
+        <Route
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
+          {/* Customer Routes */}
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/my-bookings" element={<MyBookingsPage />} />
+          
+          {/* Owner Routes - Pendaftaran Barbershop */}
+          <Route
+            path="/register-barbershop"
+            element={<RegisterBarbershopPage />}
+          />
+          
+          {/* Owner Routes - Daftar Barbershop */}
+          <Route path="/owner/my-barbershops" element={<MyBarbershopsPage />} />
+          
+          {/* Owner Routes - Kelola Barbershop Spesifik */}
+          <Route
+            path="/owner/barbershop/:barbershopId/dashboard"
+            element={<OwnerDashboardPage />}
+          />
+          <Route
+            path="/owner/barbershop/:barbershopId/edit"
+            element={<EditBarbershopPage />}
+          />
+          <Route
+            path="/owner/barbershop/:barbershopId/services"
+            element={<ManageServicesPage />}
+          />
+          <Route
+            path="/owner/barbershop/:barbershopId/staff"
+            element={<ManageStaffPage />}
+          />
+          {/* ✅ NEW: Manage Bookings Route */}
+          <Route
+            path="/owner/barbershop/:barbershopId/bookings"
+            element={<ManageBookingsPage />}
+          />
+          {/* ✅ NEW: Barbershop Profile/Image Route */}
+          <Route
+            path="/owner/barbershop/:barbershopId/profile"
+            element={<BarbershopProfilePage />}
+          />
+          
+          {/* Owner Routes - Menu Tambahan (Siap untuk fitur masa depan) */}
+          {/* 
+          <Route
+            path="/owner/barbershop/:barbershopId/bookings"
+            element={<ManageBookingsPage />}
+          />
+          <Route
+            path="/owner/barbershop/:barbershopId/settings"
+            element={<BarbershopSettingsPage />}
+          />
+          */}
         </Route>
-        
-        {/* Rute Catch-all untuk halaman yang tidak ditemukan, arahkan ke halaman utama */}
+
+        {/* --- Rute Default & Catch-all --- */}
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      
+      {/* Toast Notifications Container */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </Router>
   );
 };
 
-// Komponen App paling atas yang membungkus semuanya
 function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <AppContent />
     </AuthProvider>
   );
 }

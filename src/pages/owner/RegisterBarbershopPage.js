@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
-import Stepper from '../../components/ui/Stepper'; // Impor stepper
+import Stepper from '../../components/ui/Stepper';
 import { FiUploadCloud, FiArrowLeft } from 'react-icons/fi';
 
 // Komponen File Input Kustom
@@ -31,10 +31,10 @@ const CustomFileInput = ({ label, required, onChange, fileName }) => (
 
 const RegisterBarbershopPage = () => {
     const navigate = useNavigate();
-    const [currentStep, setCurrentStep] = useState(0); // Mulai dari step 0
+    const [currentStep, setCurrentStep] = useState(0);
     const [error, setError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // State untuk semua data form
     const [formData, setFormData] = useState({
         name: '',
         address: '',
@@ -61,7 +61,6 @@ const RegisterBarbershopPage = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
     
-    // Handler khusus untuk jam buka
     const handleTimeChange = (day, type, value) => {
         setFormData(prev => ({
             ...prev,
@@ -85,23 +84,26 @@ const RegisterBarbershopPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setIsSubmitting(true);
 
         const finalFormData = new FormData();
         finalFormData.append('name', formData.name);
         finalFormData.append('address', formData.address);
         finalFormData.append('city', formData.city);
         finalFormData.append('opening_hours', JSON.stringify(formData.opening_hours));
-        if(ktpFile) finalFormData.append('ktp', ktpFile);
-        if(permitFile) finalFormData.append('permit', permitFile);
+        if (ktpFile) finalFormData.append('ktp', ktpFile);
+        if (permitFile) finalFormData.append('permit', permitFile);
         
         try {
-            await api.post('/barbershops', finalFormData, {
+            await api.post('/barbershops/register', finalFormData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert('Pendaftaran barbershop berhasil! Data Anda sedang direview oleh Admin.');
-            navigate('/owner/dashboard');
+            navigate('/dashboard'); // <-- Diarahkan ke dashboard utama
         } catch (err) {
             setError(err.response?.data?.message || 'Pendaftaran gagal. Periksa kembali data Anda.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -125,7 +127,6 @@ const RegisterBarbershopPage = () => {
                 <form onSubmit={handleSubmit}>
                     {error && <div className="p-3 mb-4 text-red-700 bg-red-100 rounded">{error}</div>}
 
-                    {/* Step 1: Informasi Dasar */}
                     {currentStep === 0 && (
                         <div className="space-y-4">
                              <h2 className="text-xl font-semibold">Langkah 1: Informasi Dasar</h2>
@@ -135,7 +136,6 @@ const RegisterBarbershopPage = () => {
                         </div>
                     )}
 
-                    {/* Step 2: Jam Operasional */}
                     {currentStep === 1 && (
                         <div>
                              <h2 className="text-xl font-semibold mb-4">Langkah 2: Jam Operasional</h2>
@@ -155,7 +155,6 @@ const RegisterBarbershopPage = () => {
                         </div>
                     )}
                     
-                    {/* Step 3: Dokumen */}
                     {currentStep === 2 && (
                          <div className="space-y-6">
                             <h2 className="text-xl font-semibold">Langkah 3: Dokumen Verifikasi</h2>
@@ -164,22 +163,21 @@ const RegisterBarbershopPage = () => {
                          </div>
                     )}
                     
-                    {/* Tombol Navigasi */}
                     <div className="flex justify-between mt-8">
                         {currentStep > 0 && (
                             <button type="button" onClick={handlePrev} className="px-6 py-2 font-semibold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
                                 Kembali
                             </button>
                         )}
-                        <div/> {/* Spacer agar tombol selanjutnya di kanan */}
+                        <div/>
                         {currentStep < steps.length - 1 && (
                             <button type="button" onClick={handleNext} className="px-6 py-2 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
                                 Lanjutkan
                             </button>
                         )}
                         {currentStep === steps.length - 1 && (
-                            <button type="submit" className="px-6 py-2 font-semibold text-white bg-green-600 rounded-md hover:bg-green-700">
-                                Selesaikan Pendaftaran
+                            <button type="submit" disabled={isSubmitting} className="px-6 py-2 font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400">
+                                {isSubmitting ? 'Mengirim...' : 'Selesaikan Pendaftaran'}
                             </button>
                         )}
                     </div>

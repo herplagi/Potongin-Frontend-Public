@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { FiClock, FiXCircle, FiCheckCircle, FiPlus, FiLogOut } from 'react-icons/fi';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { FiClock, FiXCircle, FiCheckCircle, FiTool } from 'react-icons/fi';
 
 // Komponen Notifikasi Status Pendaftaran
 const ApplicationStatus = ({ applications }) => (
@@ -25,7 +25,7 @@ const ApplicationStatus = ({ applications }) => (
                         </>
                     )}
                     {app.approval_status === 'pending' && <p className="text-sm text-yellow-700">Sedang direview oleh Admin.</p>}
-                    {app.approval_status === 'approved' && <p className="text-sm text-green-700">Selamat! Barbershop Anda telah disetujui. Role Anda akan diupdate saat login berikutnya.</p>}
+                    {app.approval_status === 'approved' && <p className="text-sm text-green-700">Selamat! Barbershop Anda telah disetujui.</p>}
                 </div>
             </div>
         ))}
@@ -43,45 +43,52 @@ const RegisterCTA = () => (
     </div>
 );
 
-const CustomerDashboardPage = () => {
-    const { user, logout } = useAuth();
+const DashboardPage = () => {
+    const { user } = useAuth();
     const [applications, setApplications] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const checkApplicationStatus = async () => {
-            try {
-                const response = await api.get('/barbershops/my-application');
-                setApplications(response.data);
-            } catch (error) {
-                if (error.response?.status !== 404) {
-                    console.error("Gagal cek status aplikasi:", error);
+        if (user && user.role !== 'admin') {
+            const checkApplicationStatus = async () => {
+                try {
+                    const response = await api.get('/barbershops/my-application');
+                    setApplications(response.data);
+                } catch (error) {
+                    if (error.response?.status !== 404) {
+                        console.error("Gagal cek status aplikasi:", error);
+                    }
+                } finally {
+                    setLoading(false);
                 }
-            } finally {
-                setLoading(false);
-            }
-        };
-        checkApplicationStatus();
-    }, []);
+            };
+            checkApplicationStatus();
+        } else {
+            setLoading(false);
+        }
+    }, [user]);
 
     if (loading) return <div className="p-8 text-center">Loading...</div>;
 
     return (
         <div className="p-8">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">Selamat Datang, {user?.name}!</h1>
-                <button onClick={logout} className="flex items-center px-4 py-2 text-sm text-gray-700 bg-white border rounded-md shadow-sm hover:bg-gray-50">
-                    <FiLogOut className="mr-2"/> Logout
-                </button>
-            </div>
+            <h1 className="text-3xl font-bold">Selamat Datang, {user?.name}!</h1>
             
-            {applications.length > 0 ? (
-                <ApplicationStatus applications={applications} />
-            ) : (
-                <RegisterCTA />
+            {user?.role === 'owner' && (
+                <div className="p-6 mt-6 bg-green-50 border border-green-200 rounded-lg">
+                    <h2 className="text-xl font-bold text-green-800">Panel Owner Aktif</h2>
+                    <p className="mt-1 text-green-700">Anda sekarang dapat mengelola barbershop Anda.</p>
+                    <Link to="/owner/my-barbershops" className="mt-4 inline-flex items-center px-4 py-2 font-semibold bg-green-600 text-white rounded-md hover:bg-green-700">
+                        <FiTool className="mr-2"/> Masuk ke Panel Kelola Barbershop
+                    </Link>
+                </div>
             )}
+            
+            {applications.length > 0 && <ApplicationStatus applications={applications} />}
+
+            {applications.length === 0 && user?.role === 'customer' && <RegisterCTA />}
         </div>
     );
 };
 
-export default CustomerDashboardPage;
+export default DashboardPage;
