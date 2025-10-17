@@ -6,8 +6,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // Layout & Wrapper
 import MainLayout from "./components/MainLayout";
@@ -34,29 +34,30 @@ import ManageStaffPage from "./pages/owner/ManageStaffPage";
 import OwnerDashboardPage from "./pages/owner/OwnerDashboardPage";
 import ManageBookingsPage from "./pages/owner/ManageBookingsPage"; // ✅ NEW
 import BarbershopProfilePage from "./pages/owner/BarbershopProfilePage"; // ✅ NEW
+import BarbershopReviewsPage from "./pages/owner/BarbershopReviewsPage";
 
 const HomeRedirect = () => {
   const { user } = useAuth();
-  
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   // ✅ UPDATED: Priority Owner > Customer
   if (user.is_owner) {
     return <Navigate to="/owner/my-barbershops" replace />;
   }
-  
+
   if (user.is_customer) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   return <Navigate to="/login" replace />;
 };
 
 const AppContent = () => {
   const { loading } = useAuth();
-  
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gradient-to-br from-indigo-500 to-purple-600">
@@ -91,16 +92,16 @@ const AppContent = () => {
           {/* Customer Routes */}
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/my-bookings" element={<MyBookingsPage />} />
-          
+
           {/* Owner Routes - Pendaftaran Barbershop */}
           <Route
             path="/register-barbershop"
             element={<RegisterBarbershopPage />}
           />
-          
+
           {/* Owner Routes - Daftar Barbershop */}
           <Route path="/owner/my-barbershops" element={<MyBarbershopsPage />} />
-          
+
           {/* Owner Routes - Kelola Barbershop Spesifik */}
           <Route
             path="/owner/barbershop/:barbershopId/dashboard"
@@ -128,7 +129,11 @@ const AppContent = () => {
             path="/owner/barbershop/:barbershopId/profile"
             element={<BarbershopProfilePage />}
           />
-          
+          <Route
+            path="/owner/barbershop/:barbershopId/reviews"
+            element={<BarbershopReviewsPage />}
+          />
+
           {/* Owner Routes - Menu Tambahan (Siap untuk fitur masa depan) */}
           {/* 
           <Route
@@ -146,7 +151,7 @@ const AppContent = () => {
         <Route path="/" element={<HomeRedirect />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-      
+
       {/* Toast Notifications Container */}
       <ToastContainer
         position="top-right"

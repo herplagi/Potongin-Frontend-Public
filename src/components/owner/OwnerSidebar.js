@@ -6,7 +6,7 @@ import NotificationBell from '../NotificationBell'; // ✅ posisi path benar
 import { 
   FiHome, FiBarChart2, FiScissors, FiUsers, 
   FiCalendar, FiPlus, FiLogOut, 
-  FiChevronDown, FiChevronRight, FiAlertCircle, FiImage
+  FiChevronDown, FiChevronRight, FiAlertCircle, FiImage, FiStar
 } from 'react-icons/fi';
 
 const OwnerSidebar = () => {
@@ -71,6 +71,7 @@ const OwnerSidebar = () => {
     { path: 'services', icon: FiScissors, label: 'Layanan' },
     { path: 'staff', icon: FiUsers, label: 'Staff' },
     { path: 'bookings', icon: FiCalendar, label: 'Booking' },
+    { path: 'reviews', icon: FiStar, label: 'Review' },
   ];
 
   const linkClasses = "flex items-center px-4 py-2 mt-2 text-gray-100 transition-colors duration-200 transform rounded-md hover:bg-gray-700";
