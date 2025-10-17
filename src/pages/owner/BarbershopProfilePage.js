@@ -1,8 +1,10 @@
+// pages/owner/BarbershopProfilePage.js
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
-import { FiArrowLeft, FiUpload, FiImage } from 'react-icons/fi';
+import LocationPicker from '../../components/LocationPicker'; // Impor komponen peta
+import { FiArrowLeft, FiUpload, FiImage, FiMapPin } from 'react-icons/fi'; // Tambahkan ikon map
 
 const BarbershopProfilePage = () => {
     const { barbershopId } = useParams();
@@ -10,6 +12,9 @@ const BarbershopProfilePage = () => {
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
     const [imagePreview, setImagePreview] = useState(null);
+    // State untuk lokasi
+    const [locationData, setLocationData] = useState({ latitude: null, longitude: null });
+    const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
 
     useEffect(() => {
         const fetchBarbershop = async () => {
@@ -19,6 +24,11 @@ const BarbershopProfilePage = () => {
                 if (response.data.main_image_url) {
                     setImagePreview(`http://localhost:5000${response.data.main_image_url}`);
                 }
+                // Set state lokasi dari data response
+                setLocationData({
+                    latitude: response.data.latitude ? parseFloat(response.data.latitude) : null,
+                    longitude: response.data.longitude ? parseFloat(response.data.longitude) : null
+                });
             } catch (error) {
                 toast.error('Gagal memuat data barbershop');
                 console.error(error);
@@ -32,14 +42,12 @@ const BarbershopProfilePage = () => {
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
-            // Preview image
             const reader = new FileReader();
             reader.onloadend = () => {
                 setImagePreview(reader.result);
             };
             reader.readAsDataURL(file);
 
-            // Upload image
             handleImageUpload(file);
         }
     };
@@ -53,9 +61,7 @@ const BarbershopProfilePage = () => {
             const response = await api.post(
                 `/barbershops/${barbershopId}/upload-image`,
                 formData,
-                {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                }
+                { headers: { 'Content-Type': 'multipart/form-data' } }
             );
             toast.success('Gambar berhasil diupload!');
             setBarbershop(prev => ({
@@ -67,6 +73,41 @@ const BarbershopProfilePage = () => {
             console.error(error);
         } finally {
             setUploading(false);
+        }
+    };
+
+    // Handler untuk perubahan lokasi dari komponen peta
+    const handleLocationChange = (latlng) => {
+        setLocationData({
+            latitude: latlng.lat,
+            longitude: latlng.lng
+        });
+    };
+
+    // Handler untuk menyimpan lokasi ke backend
+    const handleSaveLocation = async () => {
+        if (locationData.latitude === null || locationData.longitude === null) {
+            toast.error('Silakan pilih lokasi di peta terlebih dahulu.');
+            return;
+        }
+        setIsUpdatingLocation(true);
+        try {
+            const response = await api.patch(`/barbershops/${barbershopId}/location`, {
+                latitude: locationData.latitude,
+                longitude: locationData.longitude
+            });
+            toast.success('Lokasi berhasil diperbarui!');
+            // Opsional: Perbarui state barbershop jika perlu
+            setBarbershop(prev => ({
+                ...prev,
+                latitude: locationData.latitude,
+                longitude: locationData.longitude
+            }));
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal memperbarui lokasi.');
+            console.error(error);
+        } finally {
+            setIsUpdatingLocation(false);
         }
     };
 
@@ -89,7 +130,7 @@ const BarbershopProfilePage = () => {
             </h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Left Column - Image Upload */}
+                {/* Bagian Gambar - (sama seperti sebelumnya) */}
                 <div className="bg-white rounded-lg shadow-md p-6">
                     <h2 className="text-xl font-semibold text-gray-800 mb-4">
                         Gambar Utama Barbershop
@@ -97,7 +138,7 @@ const BarbershopProfilePage = () => {
                     <p className="text-sm text-gray-600 mb-4">
                         Gambar ini akan ditampilkan di aplikasi customer. Gunakan foto yang menarik dan berkualitas tinggi.
                     </p>
-
+                    {/* ... (kode upload gambar seperti sebelumnya) ... */}
                     {/* Image Preview */}
                     <div className="mb-4">
                         {imagePreview ? (
@@ -147,55 +188,95 @@ const BarbershopProfilePage = () => {
                     </label>
                 </div>
 
-                {/* Right Column - Barbershop Info */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                    <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                        Informasi Barbershop
-                    </h2>
-                    
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-sm font-medium text-gray-500">Nama</label>
-                            <p className="mt-1 text-lg font-semibold text-gray-900">
-                                {barbershop?.name}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label className="text-sm font-medium text-gray-500">Alamat</label>
-                            <p className="mt-1 text-gray-900">
-                                {barbershop?.address}, {barbershop?.city}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label className="text-sm font-medium text-gray-500">Status</label>
-                            <div className="mt-1">
-                                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                                    barbershop?.approval_status === 'approved'
-                                        ? 'bg-green-100 text-green-800'
-                                        : barbershop?.approval_status === 'pending'
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : 'bg-red-100 text-red-800'
-                                }`}>
-                                    {barbershop?.approval_status}
-                                </span>
+                {/* Bagian Informasi & Lokasi */}
+                <div className="space-y-8">
+                    {/* Informasi Dasar - (sama seperti sebelumnya) */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                            Informasi Barbershop
+                        </h2>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-sm font-medium text-gray-500">Nama</label>
+                                <p className="mt-1 text-lg font-semibold text-gray-900">
+                                    {barbershop?.name}
+                                </p>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-500">Alamat</label>
+                                <p className="mt-1 text-gray-900">
+                                    {barbershop?.address}, {barbershop?.city}
+                                </p>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-500">Status</label>
+                                <div className="mt-1">
+                                    <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                                        barbershop?.approval_status === 'approved'
+                                            ? 'bg-green-100 text-green-800'
+                                            : barbershop?.approval_status === 'pending'
+                                            ? 'bg-yellow-100 text-yellow-800'
+                                            : 'bg-red-100 text-red-800'
+                                    }`}>
+                                        {barbershop?.approval_status}
+                                    </span>
+                                </div>
+                            </div>
+                            {/* Tombol Edit Info Dasar (jika perlu) */}
+                            <div className="pt-4 border-t">
+                                <Link
+                                    to={`/owner/barbershop/${barbershopId}/edit`} // Ini akan ke halaman edit yang memicu review
+                                    className="block w-full text-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                                >
+                                    Edit Info Dasar (Perlu Review)
+                                </Link>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="pt-4 border-t">
-                            <Link
-                                to={`/owner/barbershop/${barbershopId}/edit`}
-                                className="block w-full text-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                    {/* Bagian Lokasi Baru */}
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                            <FiMapPin className="mr-2" /> Lokasi Barbershop
+                        </h2>
+                        <p className="text-sm text-gray-600 mb-4">
+                            Atur lokasi akurat barbershop Anda. Perubahan ini tidak memerlukan review admin.
+                        </p>
+
+                        {/* Peta Interaktif */}
+                        <LocationPicker
+                            initialLat={locationData.latitude}
+                            initialLng={locationData.longitude}
+                            onLocationChange={handleLocationChange}
+                        />
+
+                        {/* Tombol Simpan Lokasi */}
+                        <div className="mt-4">
+                            <button
+                                onClick={handleSaveLocation}
+                                disabled={isUpdatingLocation}
+                                className={`w-full text-center px-4 py-2 rounded-md transition-colors ${
+                                    isUpdatingLocation
+                                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                }`}
                             >
-                                Edit Informasi Barbershop
-                            </Link>
+                                {isUpdatingLocation ? 'Menyimpan Lokasi...' : 'Simpan Lokasi'}
+                            </button>
                         </div>
+
+                        {/* Info Koordinat (Opsional) */}
+                        {locationData.latitude !== null && locationData.longitude !== null && (
+                            <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                                <p className="text-xs text-gray-500">Koordinat saat ini:</p>
+                                <p className="text-sm font-mono">{locationData.latitude.toFixed(6)}, {locationData.longitude.toFixed(6)}</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Tips Section */}
+            {/* Tips Section (opsional, bisa dipindahkan atau dihapus) */}
             <div className="mt-8 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
                 <h3 className="font-semibold text-blue-800 mb-2">💡 Tips untuk Foto yang Menarik:</h3>
                 <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
