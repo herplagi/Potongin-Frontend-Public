@@ -3,8 +3,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../services/api";
-import LocationPicker from "../../components/LocationPicker"; // Impor komponen peta
-import { FiArrowLeft, FiUpload, FiImage, FiMapPin } from "react-icons/fi"; // Tambahkan ikon map
+import LocationPicker from "../../components/LocationPicker";
+import { FiArrowLeft, FiUpload, FiImage, FiMapPin, FiFileText } from "react-icons/fi";
 
 const BarbershopProfilePage = () => {
   const { barbershopId } = useParams();
@@ -12,7 +12,6 @@ const BarbershopProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
-  // State untuk lokasi
   const [description, setDescription] = useState("");
   const [isSavingDescription, setIsSavingDescription] = useState(false);
   const [locationData, setLocationData] = useState({
@@ -32,7 +31,6 @@ const BarbershopProfilePage = () => {
           );
         }
         setDescription(response.data.description || "");
-        // Set state lokasi dari data response
         setLocationData({
           latitude: response.data.latitude
             ? parseFloat(response.data.latitude)
@@ -59,7 +57,6 @@ const BarbershopProfilePage = () => {
         setImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
-
       handleImageUpload(file);
     }
   };
@@ -88,7 +85,6 @@ const BarbershopProfilePage = () => {
     }
   };
 
-  // Handler untuk perubahan lokasi dari komponen peta
   const handleLocationChange = (latlng) => {
     setLocationData({
       latitude: latlng.lat,
@@ -96,7 +92,6 @@ const BarbershopProfilePage = () => {
     });
   };
 
-  // Handler untuk menyimpan lokasi ke backend
   const handleSaveLocation = async () => {
     if (locationData.latitude === null || locationData.longitude === null) {
       toast.error("Silakan pilih lokasi di peta terlebih dahulu.");
@@ -104,15 +99,11 @@ const BarbershopProfilePage = () => {
     }
     setIsUpdatingLocation(true);
     try {
-      const response = await api.patch(
-        `/barbershops/${barbershopId}/location`,
-        {
-          latitude: locationData.latitude,
-          longitude: locationData.longitude,
-        }
-      );
+      await api.patch(`/barbershops/${barbershopId}/location`, {
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+      });
       toast.success("Lokasi berhasil diperbarui!");
-      // Opsional: Perbarui state barbershop jika perlu
       setBarbershop((prev) => ({
         ...prev,
         latitude: locationData.latitude,
@@ -127,12 +118,18 @@ const BarbershopProfilePage = () => {
   };
 
   const handleSaveDescription = async () => {
-    if (isSavingDescription) return; // Hindari multiple click
+    if (isSavingDescription) return;
+    
+    // Validasi minimal karakter
+    if (description.trim().length < 10) {
+      toast.error("Deskripsi minimal 10 karakter");
+      return;
+    }
+    
     setIsSavingDescription(true);
     try {
-      await api.put(`/barbershops/${barbershopId}`, { description }); // Hanya kirim description
+      await api.put(`/barbershops/${barbershopId}`, { description });
       toast.success("Deskripsi barbershop berhasil diperbarui!");
-      // Update state lokal jika perlu
       setBarbershop((prev) => ({ ...prev, description }));
     } catch (error) {
       console.error("Gagal menyimpan deskripsi:", error);
@@ -163,68 +160,128 @@ const BarbershopProfilePage = () => {
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Bagian Gambar - (sama seperti sebelumnya) */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">
-            Gambar Utama Barbershop
-          </h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Gambar ini akan ditampilkan di aplikasi customer. Gunakan foto yang
-            menarik dan berkualitas tinggi.
-          </p>
-          {/* ... (kode upload gambar seperti sebelumnya) ... */}
-          {/* Image Preview */}
-          <div className="mb-4">
-            {imagePreview ? (
-              <div className="relative">
-                <img
-                  src={imagePreview}
-                  alt="Barbershop"
-                  className="w-full h-64 object-cover rounded-lg"
-                />
-                <div className="absolute top-2 right-2">
-                  <span className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
-                    ✓ Aktif
-                  </span>
+        {/* Kolom Kiri - Gambar & Deskripsi */}
+        <div className="space-y-8">
+          {/* Bagian Gambar */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              Gambar Utama Barbershop
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Gambar ini akan ditampilkan di aplikasi customer. Gunakan foto yang
+              menarik dan berkualitas tinggi.
+            </p>
+
+            {/* Image Preview */}
+            <div className="mb-4">
+              {imagePreview ? (
+                <div className="relative">
+                  <img
+                    src={imagePreview}
+                    alt="Barbershop"
+                    className="w-full h-64 object-cover rounded-lg"
+                  />
+                  <div className="absolute top-2 right-2">
+                    <span className="bg-green-600 text-white px-3 py-1 rounded-full text-xs">
+                      ✓ Aktif
+                    </span>
+                  </div>
                 </div>
+              ) : (
+                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <FiImage className="mx-auto text-6xl text-gray-300 mb-2" />
+                    <p className="text-gray-500">Belum ada gambar</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Upload Button */}
+            <label htmlFor="image-upload" className="block">
+              <div
+                className={`w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-indigo-500 transition-colors ${
+                  uploading ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <FiUpload className="mx-auto text-2xl text-gray-400 mb-2" />
+                <p className="text-sm font-medium text-gray-700">
+                  {uploading ? "Uploading..." : "Klik untuk upload gambar baru"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">PNG, JPG (Max. 5MB)</p>
               </div>
-            ) : (
-              <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <FiImage className="mx-auto text-6xl text-gray-300 mb-2" />
-                  <p className="text-gray-500">Belum ada gambar</p>
-                </div>
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/png, image/jpeg, image/jpg"
+                onChange={handleImageChange}
+                disabled={uploading}
+                className="hidden"
+              />
+            </label>
+          </div>
+
+          {/* ✅ BAGIAN DESKRIPSI BARU */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+              <FiFileText className="mr-2" /> Deskripsi Barbershop
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Ceritakan tentang barbershop Anda, fasilitas yang tersedia, dan keunggulan yang membuat pelanggan tertarik.
+            </p>
+
+            {/* Textarea Deskripsi */}
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Contoh: Barbershop modern dengan AC, WiFi gratis, dan kursi tunggu yang nyaman. Kami melayani berbagai gaya potongan rambut dari klasik hingga trendy. Staff kami berpengalaman dan profesional."
+              rows={8}
+              maxLength={500}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+            />
+            
+            {/* Character Counter */}
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-xs text-gray-500">
+                {description.length}/500 karakter
+              </p>
+              {description.length < 10 && (
+                <p className="text-xs text-amber-600">
+                  Minimal 10 karakter
+                </p>
+              )}
+            </div>
+
+            {/* Tombol Simpan Deskripsi */}
+            <div className="mt-4">
+              <button
+                onClick={handleSaveDescription}
+                disabled={isSavingDescription || description.trim().length < 10}
+                className={`w-full text-center px-4 py-3 rounded-lg font-medium transition-colors ${
+                  isSavingDescription || description.trim().length < 10
+                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                    : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md hover:shadow-lg"
+                }`}
+              >
+                {isSavingDescription ? "Menyimpan..." : "Simpan Deskripsi"}
+              </button>
+            </div>
+
+            {/* Preview Deskripsi */}
+            {description && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-xs font-semibold text-gray-500 mb-2">Preview:</p>
+                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                  {description}
+                </p>
               </div>
             )}
           </div>
-
-          {/* Upload Button */}
-          <label htmlFor="image-upload" className="block">
-            <div
-              className={`w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:border-indigo-500 transition-colors ${
-                uploading ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              <FiUpload className="mx-auto text-2xl text-gray-400 mb-2" />
-              <p className="text-sm font-medium text-gray-700">
-                {uploading ? "Uploading..." : "Klik untuk upload gambar baru"}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">PNG, JPG (Max. 5MB)</p>
-            </div>
-            <input
-              id="image-upload"
-              type="file"
-              accept="image/png, image/jpeg, image/jpg"
-              onChange={handleImageChange}
-              disabled={uploading}
-              className="hidden"
-            />
-          </label>
         </div>
 
-        {/* Bagian Informasi & Lokasi */}
+        {/* Kolom Kanan - Informasi & Lokasi */}
         <div className="space-y-8">
-          {/* Informasi Dasar - (sama seperti sebelumnya) */}
+          {/* Informasi Dasar */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4">
               Informasi Barbershop
@@ -264,10 +321,9 @@ const BarbershopProfilePage = () => {
                   </span>
                 </div>
               </div>
-              {/* Tombol Edit Info Dasar (jika perlu) */}
               <div className="pt-4 border-t">
                 <Link
-                  to={`/owner/barbershop/${barbershopId}/edit`} // Ini akan ke halaman edit yang memicu review
+                  to={`/owner/barbershop/${barbershopId}/edit`}
                   className="block w-full text-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
                 >
                   Edit Info Dasar (Perlu Review)
@@ -276,7 +332,7 @@ const BarbershopProfilePage = () => {
             </div>
           </div>
 
-          {/* Bagian Lokasi Baru */}
+          {/* Bagian Lokasi */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
               <FiMapPin className="mr-2" /> Lokasi Barbershop
@@ -286,14 +342,12 @@ const BarbershopProfilePage = () => {
               review admin.
             </p>
 
-            {/* Peta Interaktif */}
             <LocationPicker
               initialLat={locationData.latitude}
               initialLng={locationData.longitude}
               onLocationChange={handleLocationChange}
             />
 
-            {/* Tombol Simpan Lokasi */}
             <div className="mt-4">
               <button
                 onClick={handleSaveLocation}
@@ -308,7 +362,6 @@ const BarbershopProfilePage = () => {
               </button>
             </div>
 
-            {/* Info Koordinat (Opsional) */}
             {locationData.latitude !== null &&
               locationData.longitude !== null && (
                 <div className="mt-4 p-3 bg-gray-50 rounded-md">
@@ -323,18 +376,29 @@ const BarbershopProfilePage = () => {
         </div>
       </div>
 
-      {/* Tips Section (opsional, bisa dipindahkan atau dihapus) */}
-      <div className="mt-8 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-        <h3 className="font-semibold text-blue-800 mb-2">
-          💡 Tips untuk Foto yang Menarik:
+      {/* Tips Section */}
+      <div className="mt-8 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-lg">
+        <h3 className="font-semibold text-blue-800 mb-3 text-lg">
+          💡 Tips Membuat Profil Menarik:
         </h3>
-        <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-          <li>Gunakan pencahayaan yang baik dan natural</li>
-          <li>Pastikan area barbershop terlihat bersih dan rapi</li>
-          <li>Tampilkan interior yang menarik (kursi cukur, cermin, dll)</li>
-          <li>Hindari foto yang blur atau gelap</li>
-          <li>Ukuran optimal: 1200x800 pixels</li>
-        </ul>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="font-medium text-blue-700 mb-2">Foto:</h4>
+            <ul className="text-sm text-blue-600 space-y-1 list-disc list-inside">
+              <li>Gunakan pencahayaan yang baik</li>
+              <li>Tampilkan interior yang bersih dan rapi</li>
+              <li>Ukuran optimal: 1200x800 pixels</li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-medium text-blue-700 mb-2">Deskripsi:</h4>
+            <ul className="text-sm text-blue-600 space-y-1 list-disc list-inside">
+              <li>Sebutkan fasilitas (AC, WiFi, parkir)</li>
+              <li>Highlight keunggulan Anda</li>
+              <li>Jelaskan spesialisasi layanan</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
