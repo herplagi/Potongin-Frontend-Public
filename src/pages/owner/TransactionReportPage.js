@@ -326,13 +326,13 @@ const TransactionReportPage = () => {
                                 <FiDownload className="mr-2" />
                                 Export Excel
                             </button>
-                            <button
+                            {/* <button
                                 onClick={handleExportPDF}
                                 className="flex items-center px-6 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                             >
                                 <FiDownload className="mr-2" />
                                 Export PDF
-                            </button>
+                            </button> */}
                         </div>
                     </div>
 

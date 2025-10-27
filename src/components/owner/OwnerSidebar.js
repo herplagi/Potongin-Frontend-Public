@@ -82,7 +82,7 @@ const OwnerSidebar = () => {
   const activeLinkClasses = "bg-gray-700";
 
   return (
-    <div className="flex flex-col w-64 h-screen px-4 py-8 bg-gray-800 overflow-visible relative z-30">
+    <div className="flex flex-col w-64 h-screen px-4 py-8 bg-gray-800 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between relative">
         <div>
