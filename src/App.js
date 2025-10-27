@@ -32,9 +32,10 @@ import EditBarbershopPage from "./pages/owner/EditBarbershopPage";
 import ManageServicesPage from "./pages/owner/ManageServicesPage";
 import ManageStaffPage from "./pages/owner/ManageStaffPage";
 import OwnerDashboardPage from "./pages/owner/OwnerDashboardPage";
-import ManageBookingsPage from "./pages/owner/ManageBookingsPage"; // ✅ NEW
-import BarbershopProfilePage from "./pages/owner/BarbershopProfilePage"; // ✅ NEW
+import ManageBookingsPage from "./pages/owner/ManageBookingsPage";
+import BarbershopProfilePage from "./pages/owner/BarbershopProfilePage";
 import BarbershopReviewsPage from "./pages/owner/BarbershopReviewsPage";
+import TransactionReportPage from "./pages/owner/TransactionReportPage"; // ✅ NEW
 
 const HomeRedirect = () => {
   const { user } = useAuth();
@@ -119,12 +120,10 @@ const AppContent = () => {
             path="/owner/barbershop/:barbershopId/staff"
             element={<ManageStaffPage />}
           />
-          {/* ✅ NEW: Manage Bookings Route */}
           <Route
             path="/owner/barbershop/:barbershopId/bookings"
             element={<ManageBookingsPage />}
           />
-          {/* ✅ NEW: Barbershop Profile/Image Route */}
           <Route
             path="/owner/barbershop/:barbershopId/profile"
             element={<BarbershopProfilePage />}
@@ -133,18 +132,11 @@ const AppContent = () => {
             path="/owner/barbershop/:barbershopId/reviews"
             element={<BarbershopReviewsPage />}
           />
-
-          {/* Owner Routes - Menu Tambahan (Siap untuk fitur masa depan) */}
-          {/* 
+          {/* ✅ NEW: Transaction Report Route */}
           <Route
-            path="/owner/barbershop/:barbershopId/bookings"
-            element={<ManageBookingsPage />}
+            path="/owner/barbershop/:barbershopId/reports"
+            element={<TransactionReportPage />}
           />
-          <Route
-            path="/owner/barbershop/:barbershopId/settings"
-            element={<BarbershopSettingsPage />}
-          />
-          */}
         </Route>
 
         {/* --- Rute Default & Catch-all --- */}

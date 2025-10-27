@@ -6,7 +6,7 @@ import NotificationBell from '../NotificationBell';
 import { 
   FiHome, FiBarChart2, FiScissors, FiUsers, 
   FiCalendar, FiPlus, FiLogOut, 
-  FiChevronDown, FiChevronRight, FiAlertCircle, FiImage, FiStar
+  FiChevronDown, FiChevronRight, FiAlertCircle, FiImage, FiStar, FiFileText // ✅ NEW
 } from 'react-icons/fi';
 
 const OwnerSidebar = () => {
@@ -23,6 +23,7 @@ const OwnerSidebar = () => {
         const response = await api.get('/barbershops/my-barbershops');
         setBarbershops(response.data);
 
+        // Auto-expand barbershop yang sedang aktif di URL
         const urlBarbershopId = location.pathname.split('/')[3];
         if (urlBarbershopId) {
           setExpandedShops({ [urlBarbershopId]: true });
@@ -64,6 +65,7 @@ const OwnerSidebar = () => {
 
   const isActiveShop = (shopId) => location.pathname.includes(`/barbershop/${shopId}`);
 
+  // ✅ UPDATED: Tambah menu Reports
   const menuItems = [
     { path: 'dashboard', icon: FiBarChart2, label: 'Dashboard' },
     { path: 'profile', icon: FiImage, label: 'Profil & Foto' },
@@ -71,21 +73,21 @@ const OwnerSidebar = () => {
     { path: 'staff', icon: FiUsers, label: 'Staff' },
     { path: 'bookings', icon: FiCalendar, label: 'Booking' },
     { path: 'reviews', icon: FiStar, label: 'Review' },
+    { path: 'reports', icon: FiFileText, label: 'Laporan' }, // ✅ NEW
   ];
 
   const linkClasses = "flex items-center px-4 py-2 mt-2 text-gray-100 transition-colors duration-200 transform rounded-md hover:bg-gray-700";
   const activeLinkClasses = "bg-gray-700";
 
   return (
-    <div className="flex flex-col w-64 h-screen px-4 py-8 bg-gray-800 overflow-y-auto relative">
-      {/* ✅ HEADER - FIXED POSITIONING */}
-      <div className="mb-6 flex items-center justify-between sticky top-0 bg-gray-800 pb-4 z-10">
-        <div className="flex-1">
+    <div className="flex flex-col w-64 h-screen px-4 py-8 bg-gray-800 overflow-visible relative z-30">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between relative">
+        <div>
           <h2 className="text-3xl font-semibold text-white">Potong.in</h2>
           <p className="text-sm text-gray-400 mt-1">Owner Panel</p>
         </div>
-        {/* ✅ Notification Bell - Posisi Fixed */}
-        <div className="flex-shrink-0">
+        <div className="relative -mr-2">
           <NotificationBell />
         </div>
       </div>
@@ -138,6 +140,7 @@ const OwnerSidebar = () => {
         {/* Barbershop List */}
         {!loading && barbershops.map((shop) => (
           <div key={shop.barbershop_id} className="mb-2">
+            {/* Barbershop Header - Clickable untuk expand/collapse */}
             <button
               onClick={() => toggleShop(shop.barbershop_id)}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-gray-700 transition-colors ${
@@ -159,6 +162,7 @@ const OwnerSidebar = () => {
               </div>
             </button>
 
+            {/* Submenu Items - Hanya tampil jika expanded dan approved */}
             {expandedShops[shop.barbershop_id] && shop.approval_status === 'approved' && (
               <div className="ml-4 mt-1 space-y-1">
                 {menuItems.map((item) => {
@@ -183,6 +187,7 @@ const OwnerSidebar = () => {
               </div>
             )}
 
+            {/* Rejected Status Message */}
             {expandedShops[shop.barbershop_id] && shop.approval_status === 'rejected' && (
               <div className="ml-4 mt-2 p-3 bg-red-900/30 rounded-md">
                 <p className="text-xs text-red-300 mb-2">Ditolak oleh admin</p>
@@ -195,6 +200,7 @@ const OwnerSidebar = () => {
               </div>
             )}
 
+            {/* Pending Status Message */}
             {expandedShops[shop.barbershop_id] && shop.approval_status === 'pending' && (
               <div className="ml-4 mt-2 p-3 bg-yellow-900/30 rounded-md">
                 <p className="text-xs text-yellow-300">Menunggu persetujuan admin</p>
@@ -203,8 +209,10 @@ const OwnerSidebar = () => {
           </div>
         ))}
 
+        {/* Divider */}
         <div className="my-4 border-t border-gray-700"></div>
 
+        {/* Add New Barbershop Button */}
         <NavLink
           to="/register-barbershop"
           className="flex items-center px-4 py-2 mt-2 text-white bg-green-600 hover:bg-green-700 transition-colors rounded-md"

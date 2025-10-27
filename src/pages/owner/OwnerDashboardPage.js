@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../../services/api';
-import { FiDollarSign, FiCalendar, FiScissors, FiUsers, FiArrowLeft } from 'react-icons/fi';
+import { FiDollarSign, FiCalendar, FiScissors, FiUsers, FiArrowLeft, FiFileText } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Data dummy untuk grafik
@@ -39,7 +39,6 @@ const OwnerDashboardPage = () => {
         const fetchKpis = async () => {
             try {
                 setLoading(true);
-                // ✅ FIX: Endpoint yang benar
                 const response = await api.get(`/barbershops/${barbershopId}/kpis`);
                 setKpis(response.data);
                 setError(null);
@@ -82,7 +81,18 @@ const OwnerDashboardPage = () => {
                 Kembali ke Daftar Barbershop
             </Link>
 
-            <h1 className="text-4xl font-bold text-gray-900">Ringkasan Bisnis</h1>
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-4xl font-bold text-gray-900">Ringkasan Bisnis</h1>
+                
+                {/* ✅ NEW: Tombol Laporan Transaksi */}
+                <Link
+                    to={`/owner/barbershop/${barbershopId}/reports`}
+                    className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md hover:shadow-lg"
+                >
+                    <FiFileText className="mr-2" size={20} />
+                    Lihat Laporan Transaksi
+                </Link>
+            </div>
 
             <div className="grid grid-cols-1 gap-6 mt-8 sm:grid-cols-2 xl:grid-cols-4">
                 <KpiCard 
