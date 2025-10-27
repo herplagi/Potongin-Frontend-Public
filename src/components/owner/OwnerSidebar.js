@@ -1,3 +1,4 @@
+// src/components/owner/OwnerSidebar.js - LENGKAP dengan import FiClock
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
@@ -6,7 +7,7 @@ import NotificationBell from '../NotificationBell';
 import { 
   FiHome, FiBarChart2, FiScissors, FiUsers, 
   FiCalendar, FiPlus, FiLogOut, 
-  FiChevronDown, FiChevronRight, FiAlertCircle, FiImage, FiStar, FiFileText // ✅ NEW
+  FiChevronDown, FiChevronRight, FiAlertCircle, FiImage, FiStar, FiFileText, FiClock // ✅ ADDED FiClock
 } from 'react-icons/fi';
 
 const OwnerSidebar = () => {
@@ -65,15 +66,16 @@ const OwnerSidebar = () => {
 
   const isActiveShop = (shopId) => location.pathname.includes(`/barbershop/${shopId}`);
 
-  // ✅ UPDATED: Tambah menu Reports
+  // ✅ UPDATED: Menu items dengan Schedule
   const menuItems = [
     { path: 'dashboard', icon: FiBarChart2, label: 'Dashboard' },
     { path: 'profile', icon: FiImage, label: 'Profil & Foto' },
+    { path: 'schedule', icon: FiClock, label: 'Jadwal' }, // ✅ NEW
     { path: 'services', icon: FiScissors, label: 'Layanan' },
     { path: 'staff', icon: FiUsers, label: 'Staff' },
     { path: 'bookings', icon: FiCalendar, label: 'Booking' },
     { path: 'reviews', icon: FiStar, label: 'Review' },
-    { path: 'reports', icon: FiFileText, label: 'Laporan' }, // ✅ NEW
+    { path: 'reports', icon: FiFileText, label: 'Laporan' },
   ];
 
   const linkClasses = "flex items-center px-4 py-2 mt-2 text-gray-100 transition-colors duration-200 transform rounded-md hover:bg-gray-700";
@@ -140,7 +142,7 @@ const OwnerSidebar = () => {
         {/* Barbershop List */}
         {!loading && barbershops.map((shop) => (
           <div key={shop.barbershop_id} className="mb-2">
-            {/* Barbershop Header - Clickable untuk expand/collapse */}
+            {/* Barbershop Header */}
             <button
               onClick={() => toggleShop(shop.barbershop_id)}
               className={`w-full flex items-center justify-between px-3 py-2 rounded-md hover:bg-gray-700 transition-colors ${
@@ -162,7 +164,7 @@ const OwnerSidebar = () => {
               </div>
             </button>
 
-            {/* Submenu Items - Hanya tampil jika expanded dan approved */}
+            {/* Submenu Items */}
             {expandedShops[shop.barbershop_id] && shop.approval_status === 'approved' && (
               <div className="ml-4 mt-1 space-y-1">
                 {menuItems.map((item) => {

@@ -35,7 +35,8 @@ import OwnerDashboardPage from "./pages/owner/OwnerDashboardPage";
 import ManageBookingsPage from "./pages/owner/ManageBookingsPage";
 import BarbershopProfilePage from "./pages/owner/BarbershopProfilePage";
 import BarbershopReviewsPage from "./pages/owner/BarbershopReviewsPage";
-import TransactionReportPage from "./pages/owner/TransactionReportPage"; // ✅ NEW
+import TransactionReportPage from "./pages/owner/TransactionReportPage";
+import ManageSchedulePage from "./pages/owner/ManageSchedulePage";
 
 const HomeRedirect = () => {
   const { user } = useAuth();
@@ -136,6 +137,10 @@ const AppContent = () => {
           <Route
             path="/owner/barbershop/:barbershopId/reports"
             element={<TransactionReportPage />}
+          />
+          <Route
+            path="/owner/barbershop/:barbershopId/schedule"
+            element={<ManageSchedulePage />}
           />
         </Route>
 

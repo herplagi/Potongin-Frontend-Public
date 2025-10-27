@@ -4,23 +4,21 @@ import { useParams, Link } from 'react-router-dom';
 import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
-import { FiEdit, FiTrash2, FiPlus, FiArrowLeft, FiUsers } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiPlus, FiArrowLeft, FiUsers, FiPower, FiUpload } from 'react-icons/fi';
 
 const ManageStaffPage = () => {
-    // Ambil barbershopId dari URL parameter
     const { barbershopId } = useParams();
-
     const [staffList, setStaffList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState('add'); // 'add' or 'edit'
+    const [modalMode, setModalMode] = useState('add');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentStaff, setCurrentStaff] = useState({ name: '', specialty: '' });
+    const [currentStaff, setCurrentStaff] = useState({ name: '', specialty: '', photo: null });
+    const [photoPreview, setPhotoPreview] = useState(null);
 
     const fetchStaff = useCallback(async () => {
         try {
             setLoading(true);
-            // Gunakan barbershopId dari URL
             const response = await api.get(`/barbershops/${barbershopId}/staff`);
             setStaffList(response.data);
         } catch (error) {
@@ -37,22 +35,66 @@ const ManageStaffPage = () => {
 
     const openModal = (mode, staff = null) => {
         setModalMode(mode);
-        setCurrentStaff(mode === 'edit' && staff ? staff : { name: '', specialty: '' });
+        if (mode === 'edit' && staff) {
+            setCurrentStaff({ 
+                ...staff, 
+                photo: null // Reset photo untuk edit
+            });
+            // Set preview dari foto yang sudah ada
+            if (staff.picture) {
+                setPhotoPreview(`http://localhost:5000${staff.picture}`);
+            }
+        } else {
+            setCurrentStaff({ name: '', specialty: '', photo: null });
+            setPhotoPreview(null);
+        }
         setIsModalOpen(true);
     };
 
-    const closeModal = () => setIsModalOpen(false);
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setPhotoPreview(null);
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setCurrentStaff(prev => ({ ...prev, [name]: value }));
     };
 
+    const handlePhotoChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // Validasi tipe file
+            if (!file.type.startsWith('image/')) {
+                toast.error('File harus berupa gambar (JPG, PNG)');
+                return;
+            }
+            // Validasi ukuran (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error('Ukuran file maksimal 2MB');
+                return;
+            }
+            setCurrentStaff(prev => ({ ...prev, photo: file }));
+            // Preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhotoPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
-        
-        // Endpoint dengan barbershopId
+
+        const formData = new FormData();
+        formData.append('name', currentStaff.name);
+        formData.append('specialty', currentStaff.specialty || '');
+        if (currentStaff.photo) {
+            formData.append('photo', currentStaff.photo);
+        }
+
         const endpoint = modalMode === 'add' 
             ? `/barbershops/${barbershopId}/staff` 
             : `/barbershops/${barbershopId}/staff/${currentStaff.staff_id}`;
@@ -60,7 +102,9 @@ const ManageStaffPage = () => {
         const method = modalMode === 'add' ? 'post' : 'put';
 
         try {
-            await api[method](endpoint, currentStaff);
+            await api[method](endpoint, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
             toast.success(`Staf berhasil di-${modalMode === 'add' ? 'tambahkan' : 'perbarui'}!`);
             fetchStaff();
             closeModal();
@@ -71,8 +115,23 @@ const ManageStaffPage = () => {
         }
     };
 
+    const handleToggleActive = async (staffId, currentStatus) => {
+        const action = currentStatus ? 'deactivate' : 'activate';
+        const message = currentStatus ? 'menonaktifkan' : 'mengaktifkan';
+        
+        if (window.confirm(`Apakah Anda yakin ingin ${message} staf ini?`)) {
+            try {
+                await api.patch(`/barbershops/${barbershopId}/staff/${staffId}/${action}`);
+                toast.success(`Staf berhasil di-${message}.`);
+                fetchStaff();
+            } catch (error) {
+                toast.error(`Gagal ${message} staf.`);
+            }
+        }
+    };
+
     const handleDelete = async (staffId) => {
-        if (window.confirm("Apakah Anda yakin ingin menghapus staf ini?")) {
+        if (window.confirm("Apakah Anda yakin ingin menghapus staf ini secara permanen?")) {
             try {
                 await api.delete(`/barbershops/${barbershopId}/staff/${staffId}`);
                 toast.success("Staf berhasil dihapus.");
@@ -83,7 +142,6 @@ const ManageStaffPage = () => {
         }
     };
 
-    // Helper function untuk merender konten utama
     const renderContent = () => {
         if (loading) {
             return <p className="text-center mt-8 text-gray-500">Memuat data staf...</p>;
@@ -110,26 +168,57 @@ const ManageStaffPage = () => {
                 <table className="min-w-full">
                     <thead className="bg-gray-50">
                         <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Foto</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Staf</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Spesialisasi</th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                         {staffList.map(staff => (
-                            <tr key={staff.staff_id} className="hover:bg-gray-50 transition-colors">
+                            <tr key={staff.staff_id} className={`hover:bg-gray-50 transition-colors ${!staff.is_active && 'opacity-60 bg-gray-100'}`}>
+                                <td className="px-6 py-4">
+                                    {staff.picture ? (
+                                        <img 
+                                            src={`http://localhost:5000${staff.picture}`}
+                                            alt={staff.name}
+                                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                                        />
+                                    ) : (
+                                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <FiUsers className="text-gray-400" />
+                                        </div>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4">
                                     <div className="font-medium text-gray-900">{staff.name}</div>
                                 </td>
                                 <td className="px-6 py-4 text-gray-600">{staff.specialty || '-'}</td>
+                                <td className="px-6 py-4 text-center">
+                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                                        staff.is_active 
+                                            ? 'bg-green-100 text-green-800' 
+                                            : 'bg-red-100 text-red-800'
+                                    }`}>
+                                        {staff.is_active ? 'Aktif' : 'Nonaktif'}
+                                    </span>
+                                </td>
                                 <td className="px-6 py-4 text-center text-lg">
-                                    <div className="flex justify-center items-center space-x-4">
+                                    <div className="flex justify-center items-center space-x-3">
                                         <button
                                             onClick={() => openModal('edit', staff)}
                                             className="text-indigo-600 hover:text-indigo-900"
                                             title="Edit"
                                         >
                                             <FiEdit />
+                                        </button>
+                                        <button
+                                            onClick={() => handleToggleActive(staff.staff_id, staff.is_active)}
+                                            className={staff.is_active ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900'}
+                                            title={staff.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                                        >
+                                            <FiPower />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(staff.staff_id)}
@@ -193,6 +282,46 @@ const ManageStaffPage = () => {
                                     {modalMode === 'add' ? 'Tambah Staf Baru' : 'Edit Staf'}
                                 </Dialog.Title>
                                 <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                                    {/* Preview Foto */}
+                                    <div className="flex justify-center">
+                                        {photoPreview ? (
+                                            <img 
+                                                src={photoPreview} 
+                                                alt="Preview" 
+                                                className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
+                                            />
+                                        ) : (
+                                            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
+                                                <FiUsers className="text-6xl text-gray-400" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Foto */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Foto Staf (Opsional)
+                                        </label>
+                                        <div className="flex items-center justify-center w-full">
+                                            <label htmlFor="photo-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                    <FiUpload className="w-10 h-10 mb-3 text-gray-400" />
+                                                    <p className="mb-2 text-sm text-gray-500">
+                                                        <span className="font-semibold">Klik untuk upload</span> atau drag & drop
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">PNG, JPG (MAX. 2MB)</p>
+                                                </div>
+                                                <input 
+                                                    id="photo-upload" 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    onChange={handlePhotoChange}
+                                                    className="hidden" 
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+
                                     <div>
                                         <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                                             Nama Staf
