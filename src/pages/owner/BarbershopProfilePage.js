@@ -97,21 +97,37 @@ const BarbershopProfilePage = () => {
       toast.error("Silakan pilih lokasi di peta terlebih dahulu.");
       return;
     }
+
+    console.log('📍 FRONTEND: Mengirim data lokasi:', locationData);
+
     setIsUpdatingLocation(true);
     try {
-      await api.patch(`/barbershops/${barbershopId}/location`, {
+      const response = await api.patch(`/barbershops/${barbershopId}/location`, {
         latitude: locationData.latitude,
         longitude: locationData.longitude,
       });
+
+      console.log('✅ FRONTEND: Response dari backend:', response.data);
+
       toast.success("Lokasi berhasil diperbarui!");
-      setBarbershop((prev) => ({
-        ...prev,
-        latitude: locationData.latitude,
-        longitude: locationData.longitude,
-      }));
+      
+      // Update state dengan data dari response backend
+      if (response.data.barbershop) {
+        setBarbershop((prev) => ({
+          ...prev,
+          latitude: parseFloat(response.data.barbershop.latitude),
+          longitude: parseFloat(response.data.barbershop.longitude),
+        }));
+
+        // Update locationData state juga
+        setLocationData({
+          latitude: parseFloat(response.data.barbershop.latitude),
+          longitude: parseFloat(response.data.barbershop.longitude),
+        });
+      }
     } catch (error) {
+      console.error('❌ FRONTEND: Error saat update lokasi:', error);
       toast.error(error.response?.data?.message || "Gagal memperbarui lokasi.");
-      console.error(error);
     } finally {
       setIsUpdatingLocation(false);
     }
@@ -128,7 +144,8 @@ const BarbershopProfilePage = () => {
     
     setIsSavingDescription(true);
     try {
-      await api.put(`/barbershops/${barbershopId}`, { description });
+      // ✅ GUNAKAN ENDPOINT KHUSUS UNTUK DESKRIPSI (TIDAK PERLU REVIEW ADMIN)
+      await api.patch(`/barbershops/${barbershopId}/description`, { description });
       toast.success("Deskripsi barbershop berhasil diperbarui!");
       setBarbershop((prev) => ({ ...prev, description }));
     } catch (error) {
@@ -221,7 +238,7 @@ const BarbershopProfilePage = () => {
             </label>
           </div>
 
-          {/* ✅ BAGIAN DESKRIPSI BARU */}
+          {/* ✅ BAGIAN DESKRIPSI */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
               <FiFileText className="mr-2" /> Deskripsi Barbershop
@@ -265,6 +282,13 @@ const BarbershopProfilePage = () => {
               >
                 {isSavingDescription ? "Menyimpan..." : "Simpan Deskripsi"}
               </button>
+            </div>
+
+            {/* ✅ INFO BOX: Tidak perlu review admin */}
+            <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+              <p className="text-xs text-blue-700">
+                ℹ️ <strong>Info:</strong> Perubahan deskripsi tidak memerlukan review admin dan akan langsung tampil di aplikasi customer.
+              </p>
             </div>
 
             {/* Preview Deskripsi */}
@@ -360,6 +384,13 @@ const BarbershopProfilePage = () => {
               >
                 {isUpdatingLocation ? "Menyimpan Lokasi..." : "Simpan Lokasi"}
               </button>
+            </div>
+
+            {/* ✅ INFO BOX: Tidak perlu review admin */}
+            <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
+              <p className="text-xs text-blue-700">
+                ℹ️ <strong>Info:</strong> Perubahan lokasi tidak memerlukan review admin.
+              </p>
             </div>
 
             {locationData.latitude !== null &&
