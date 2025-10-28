@@ -1,4 +1,4 @@
-// src/pages/owner/ManageSchedulePage.js
+// src/pages/owner/ManageSchedulePage.js - WORKING VERSION
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -15,7 +15,16 @@ const ManageSchedulePage = () => {
         try {
             setLoading(true);
             const response = await api.get(`/barbershops/${barbershopId}/schedule`);
-            setSchedules(response.data);
+            
+            // Format data untuk display
+            const formattedSchedules = response.data.map(schedule => ({
+                ...schedule,
+                // Convert dari "HH:MM" ke "HH:MM:SS" jika perlu
+                open_time: schedule.open_time || null,
+                close_time: schedule.close_time || null
+            }));
+            
+            setSchedules(formattedSchedules);
         } catch (error) {
             toast.error('Gagal memuat jadwal');
             console.error(error);
@@ -32,14 +41,12 @@ const ManageSchedulePage = () => {
         const newSchedules = [...schedules];
         newSchedules[index].is_open = !newSchedules[index].is_open;
         
-        // Jika ditutup, reset waktu
         if (!newSchedules[index].is_open) {
             newSchedules[index].open_time = null;
             newSchedules[index].close_time = null;
         } else {
-            // Set default time jika dibuka
-            newSchedules[index].open_time = '09:00:00';
-            newSchedules[index].close_time = '21:00:00';
+            newSchedules[index].open_time = '09:00';
+            newSchedules[index].close_time = '21:00';
         }
         
         setSchedules(newSchedules);
@@ -47,13 +54,12 @@ const ManageSchedulePage = () => {
 
     const handleTimeChange = (index, field, value) => {
         const newSchedules = [...schedules];
-        // Convert HH:MM to HH:MM:SS
-        newSchedules[index][field] = value ? `${value}:00` : null;
+        newSchedules[index][field] = value || null;
         setSchedules(newSchedules);
     };
 
     const handleSave = async () => {
-        // Validasi: pastikan semua hari yang buka punya waktu
+        // Validasi
         const invalidSchedules = schedules.filter(
             s => s.is_open && (!s.open_time || !s.close_time)
         );
@@ -63,7 +69,6 @@ const ManageSchedulePage = () => {
             return;
         }
 
-        // Validasi: pastikan waktu tutup > waktu buka
         const invalidTimes = schedules.filter(s => {
             if (!s.is_open) return false;
             return s.close_time <= s.open_time;
@@ -80,7 +85,7 @@ const ManageSchedulePage = () => {
                 schedules: schedules
             });
             toast.success('Jadwal berhasil disimpan!');
-            fetchSchedules(); // Refresh data
+            fetchSchedules();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Gagal menyimpan jadwal');
             console.error(error);
@@ -122,7 +127,6 @@ const ManageSchedulePage = () => {
                 </button>
             </div>
 
-            {/* Info Box */}
             <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
                 <p className="text-sm text-blue-700">
                     <strong>ℹ️ Info:</strong> Perubahan jadwal tidak memerlukan review admin dan akan langsung berlaku.
@@ -149,7 +153,7 @@ const ManageSchedulePage = () => {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {schedules.map((schedule, index) => (
-                            <tr key={schedule.schedule_id} className={`hover:bg-gray-50 transition-colors ${!schedule.is_open && 'bg-gray-100 opacity-60'}`}>
+                            <tr key={index} className={`hover:bg-gray-50 transition-colors ${!schedule.is_open && 'bg-gray-100 opacity-60'}`}>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
                                         <FiClock className={`mr-2 ${schedule.is_open ? 'text-green-500' : 'text-gray-400'}`} />
@@ -180,7 +184,7 @@ const ManageSchedulePage = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-center">
                                     <input
                                         type="time"
-                                        value={schedule.open_time ? schedule.open_time.substring(0, 5) : ''}
+                                        value={schedule.open_time || ''}
                                         onChange={(e) => handleTimeChange(index, 'open_time', e.target.value)}
                                         disabled={!schedule.is_open}
                                         className="px-3 py-2 border border-gray-300 rounded-md text-center disabled:bg-gray-100 disabled:text-gray-400 focus:ring-indigo-500 focus:border-indigo-500"
@@ -189,7 +193,7 @@ const ManageSchedulePage = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-center">
                                     <input
                                         type="time"
-                                        value={schedule.close_time ? schedule.close_time.substring(0, 5) : ''}
+                                        value={schedule.close_time || ''}
                                         onChange={(e) => handleTimeChange(index, 'close_time', e.target.value)}
                                         disabled={!schedule.is_open}
                                         className="px-3 py-2 border border-gray-300 rounded-md text-center disabled:bg-gray-100 disabled:text-gray-400 focus:ring-indigo-500 focus:border-indigo-500"
@@ -201,7 +205,6 @@ const ManageSchedulePage = () => {
                 </table>
             </div>
 
-            {/* Tips Section */}
             <div className="mt-6 p-6 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200">
                 <h3 className="font-semibold text-indigo-800 mb-3 text-lg">
                     💡 Tips Mengatur Jadwal:
