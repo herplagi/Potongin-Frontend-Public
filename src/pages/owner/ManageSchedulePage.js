@@ -1,25 +1,28 @@
-// src/pages/owner/ManageSchedulePage.js - WORKING VERSION
-import React, { useState, useEffect, useCallback } from 'react';
+// src/pages/owner/ManageSchedulePage.js - UPDATED WITH CONFLICT HANDLING
+import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Dialog, Transition } from '@headlessui/react';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
-import { FiArrowLeft, FiClock, FiSave } from 'react-icons/fi';
+import { FiArrowLeft, FiClock, FiSave, FiAlertTriangle } from 'react-icons/fi';
 
 const ManageSchedulePage = () => {
     const { barbershopId } = useParams();
     const [schedules, setSchedules] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    
+    // State untuk modal konfirmasi konflik
+    const [showConflictModal, setShowConflictModal] = useState(false);
+    const [conflictData, setConflictData] = useState(null);
 
     const fetchSchedules = useCallback(async () => {
         try {
             setLoading(true);
             const response = await api.get(`/barbershops/${barbershopId}/schedule`);
             
-            // Format data untuk display
             const formattedSchedules = response.data.map(schedule => ({
                 ...schedule,
-                // Convert dari "HH:MM" ke "HH:MM:SS" jika perlu
                 open_time: schedule.open_time || null,
                 close_time: schedule.close_time || null
             }));
@@ -58,7 +61,7 @@ const ManageSchedulePage = () => {
         setSchedules(newSchedules);
     };
 
-    const handleSave = async () => {
+    const handleSave = async (forceUpdate = false) => {
         // Validasi
         const invalidSchedules = schedules.filter(
             s => s.is_open && (!s.open_time || !s.close_time)
@@ -81,17 +84,48 @@ const ManageSchedulePage = () => {
 
         setIsSaving(true);
         try {
-            await api.put(`/barbershops/${barbershopId}/schedule`, {
-                schedules: schedules
+            const response = await api.put(`/barbershops/${barbershopId}/schedule`, {
+                schedules: schedules,
+                force_update: forceUpdate
             });
+
+            // ✅ CEK APAKAH ADA KONFLIK
+            if (response.status === 409) {
+                // Ada konflik, tampilkan modal konfirmasi
+                setConflictData(response.data);
+                setShowConflictModal(true);
+                setIsSaving(false);
+                return;
+            }
+
+            // Berhasil tanpa konflik atau sudah force update
             toast.success('Jadwal berhasil disimpan!');
+            
+            if (response.data.affected_bookings) {
+                toast.warning(
+                    `⚠️ ${response.data.affected_bookings.count} booking terpengaruh. ${response.data.affected_bookings.message}`,
+                    { autoClose: 8000 }
+                );
+            }
+            
             fetchSchedules();
+            setShowConflictModal(false);
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Gagal menyimpan jadwal');
-            console.error(error);
+            if (error.response?.status === 409) {
+                // Ada konflik
+                setConflictData(error.response.data);
+                setShowConflictModal(true);
+            } else {
+                toast.error(error.response?.data?.message || 'Gagal menyimpan jadwal');
+                console.error(error);
+            }
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleForceUpdate = () => {
+        handleSave(true);
     };
 
     if (loading) {
@@ -118,7 +152,7 @@ const ManageSchedulePage = () => {
                     <p className="text-gray-600 mt-1">Atur jam buka dan tutup barbershop Anda</p>
                 </div>
                 <button
-                    onClick={handleSave}
+                    onClick={() => handleSave(false)}
                     disabled={isSaving}
                     className="flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md hover:shadow-lg transition-all disabled:bg-indigo-400"
                 >
@@ -130,6 +164,7 @@ const ManageSchedulePage = () => {
             <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-r-lg">
                 <p className="text-sm text-blue-700">
                     <strong>ℹ️ Info:</strong> Perubahan jadwal tidak memerlukan review admin dan akan langsung berlaku.
+                    Sistem akan memperingatkan jika ada booking customer yang terpengaruh.
                 </p>
             </div>
 
@@ -205,6 +240,101 @@ const ManageSchedulePage = () => {
                 </table>
             </div>
 
+            {/* Modal Konflik Booking */}
+            <Transition appear show={showConflictModal} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setShowConflictModal(false)}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black bg-opacity-40" />
+                    </Transition.Child>
+
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4">
+                            <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                                <div className="flex items-center space-x-3 mb-4">
+                                    <FiAlertTriangle className="text-4xl text-amber-500" />
+                                    <Dialog.Title className="text-2xl font-bold text-gray-900">
+                                        Peringatan: Ada Booking yang Terpengaruh!
+                                    </Dialog.Title>
+                                </div>
+
+                                {conflictData && (
+                                    <>
+                                        <div className="mb-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-r-lg">
+                                            <p className="text-sm text-amber-800">
+                                                <strong>{conflictData.affected_bookings?.count} booking</strong> akan berada di luar jam operasional baru atau pada hari tutup.
+                                            </p>
+                                            <p className="text-sm text-amber-700 mt-2">
+                                                {conflictData.affected_bookings?.warning}
+                                            </p>
+                                        </div>
+
+                                        <div className="max-h-96 overflow-y-auto mb-6">
+                                            <h3 className="font-semibold text-gray-800 mb-3">Detail Booking yang Terpengaruh:</h3>
+                                            <div className="space-y-3">
+                                                {conflictData.affected_bookings?.details?.map((detail, index) => (
+                                                    <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <div>
+                                                                <p className="font-semibold text-gray-900">{detail.customer_name}</p>
+                                                                <p className="text-sm text-gray-600">{detail.customer_phone}</p>
+                                                            </div>
+                                                            <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">
+                                                                {detail.day_of_week}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm text-gray-700 space-y-1">
+                                                            <p><strong>Layanan:</strong> {detail.service_name}</p>
+                                                            <p><strong>Tanggal:</strong> {detail.booking_date}</p>
+                                                            <p><strong>Waktu Booking:</strong> {detail.booking_time}</p>
+                                                            <p className="text-red-600"><strong>Masalah:</strong> {detail.conflict_reason}</p>
+                                                            <p><strong>Jadwal Baru:</strong> {detail.new_schedule}</p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                                            <h4 className="font-semibold text-blue-800 mb-2">Langkah yang Perlu Diambil:</h4>
+                                            <ol className="list-decimal list-inside text-sm text-blue-700 space-y-1">
+                                                <li>Hubungi customer segera untuk memberitahu perubahan jadwal</li>
+                                                <li>Tawarkan opsi: reschedule ke waktu lain atau cancel dengan refund</li>
+                                                <li>Update status booking sesuai kesepakatan dengan customer</li>
+                                                <li>Dokumentasikan komunikasi untuk rekam jejak</li>
+                                            </ol>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="flex justify-end space-x-3">
+                                    <button
+                                        onClick={() => setShowConflictModal(false)}
+                                        className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        onClick={handleForceUpdate}
+                                        disabled={isSaving}
+                                        className="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium disabled:bg-amber-400"
+                                    >
+                                        {isSaving ? 'Menyimpan...' : 'Tetap Simpan & Saya Akan Hubungi Customer'}
+                                    </button>
+                                </div>
+                            </Dialog.Panel>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
+
             <div className="mt-6 p-6 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200">
                 <h3 className="font-semibold text-indigo-800 mb-3 text-lg">
                     💡 Tips Mengatur Jadwal:
@@ -212,8 +342,9 @@ const ManageSchedulePage = () => {
                 <ul className="text-sm text-indigo-700 space-y-2 list-disc list-inside">
                     <li>Pastikan jadwal sesuai dengan ketersediaan staf Anda</li>
                     <li>Jadwal yang konsisten membantu pelanggan merencanakan kunjungan</li>
-                    <li>Jika ada perubahan mendadak, segera update jadwal</li>
-                    <li>Waktu buka dan tutup akan digunakan sistem untuk mengatur slot booking</li>
+                    <li>Sistem akan memperingatkan jika perubahan jadwal mempengaruhi booking yang ada</li>
+                    <li><strong>Penting:</strong> Selalu hubungi customer jika ada perubahan yang mempengaruhi booking mereka</li>
+                    <li>Pertimbangkan memberikan kompensasi (diskon/gratis) untuk customer yang terdampak</li>
                 </ul>
             </div>
         </div>
