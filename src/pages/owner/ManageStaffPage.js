@@ -451,8 +451,114 @@ const ManageStaffPage = () => {
 
       {/* Modal Add/Edit Staff (existing code remains same) */}
       <Transition appear show={isModalOpen} as={Fragment}>
-        {/* ... existing modal code ... */}
-      </Transition>
+                <Dialog as="div" className="relative z-10" onClose={closeModal}>
+                    <Transition.Child
+                        as={Fragment}
+                        enter="ease-out duration-300"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-200"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black bg-opacity-30" />
+                    </Transition.Child>
+                    <div className="fixed inset-0 overflow-y-auto">
+                        <div className="flex min-h-full items-center justify-center p-4">
+                            <Dialog.Panel className="w-full max-w-lg p-6 bg-white rounded-2xl shadow-xl">
+                                <Dialog.Title as="h3" className="text-xl font-bold text-gray-900">
+                                    {modalMode === 'add' ? 'Tambah Staf Baru' : 'Edit Staf'}
+                                </Dialog.Title>
+                                <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+                                    {/* Preview Foto */}
+                                    <div className="flex justify-center">
+                                        {photoPreview ? (
+                                            <img 
+                                                src={photoPreview} 
+                                                alt="Preview" 
+                                                className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
+                                            />
+                                        ) : (
+                                            <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
+                                                <FiUsers className="text-6xl text-gray-400" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Upload Foto */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Foto Staf (Opsional)
+                                        </label>
+                                        <div className="flex items-center justify-center w-full">
+                                            <label htmlFor="photo-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                    <FiUpload className="w-10 h-10 mb-3 text-gray-400" />
+                                                    <p className="mb-2 text-sm text-gray-500">
+                                                        <span className="font-semibold">Klik untuk upload</span> atau drag & drop
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">PNG, JPG (MAX. 2MB)</p>
+                                                </div>
+                                                <input 
+                                                    id="photo-upload" 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    onChange={handlePhotoChange}
+                                                    className="hidden" 
+                                                />
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                                            Nama Staf
+                                        </label>
+                                        <input
+                                            id="name"
+                                            name="name"
+                                            value={currentStaff.name}
+                                            onChange={handleChange}
+                                            placeholder="Nama Lengkap Staf"
+                                            required
+                                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="specialty" className="block text-sm font-medium text-gray-700">
+                                            Spesialisasi (Opsional)
+                                        </label>
+                                        <input
+                                            id="specialty"
+                                            name="specialty"
+                                            value={currentStaff.specialty}
+                                            onChange={handleChange}
+                                            placeholder="Contoh: Ahli Pewarnaan, Expert Fade"
+                                            className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                        />
+                                    </div>
+                                    <div className="flex justify-end space-x-3 pt-4 border-t mt-6">
+                                        <button
+                                            type="button"
+                                            onClick={closeModal}
+                                            className="px-4 py-2 bg-gray-100 rounded-md text-gray-700 hover:bg-gray-200"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting}
+                                            className="px-4 py-2 text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-300"
+                                        >
+                                            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </Dialog.Panel>
+                        </div>
+                    </div>
+                </Dialog>
+            </Transition>
 
       {/* ✅ NEW: Modal Konflik Booking */}
       <Transition appear show={showConflictModal} as={Fragment}>
