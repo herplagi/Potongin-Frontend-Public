@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.get("/auth/profile");
       const userData = response.data;
-      
+
       setUser({
         id: userData.user_id,
         name: userData.name,
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", receivedToken);
     setToken(receivedToken);
     api.defaults.headers.common["Authorization"] = `Bearer ${receivedToken}`;
-    
+
     // ✅ FIXED: Fetch full user data setelah login
     await fetchUserData();
   }, []);
