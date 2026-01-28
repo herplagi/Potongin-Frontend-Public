@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import api from '../../services/api';
 import Stepper from '../../components/ui/Stepper';
 import { FiUploadCloud, FiArrowLeft } from 'react-icons/fi';
@@ -54,7 +55,62 @@ const RegisterBarbershopPage = () => {
 
     const steps = [{ name: 'Informasi Dasar' }, { name: 'Jam Operasional' }, { name: 'Dokumen' }];
 
-    const handleNext = () => setCurrentStep(prev => prev + 1);
+    // Validation function for each step
+    const validateCurrentStep = () => {
+        if (currentStep === 0) {
+            // Step 1: Informasi Dasar
+            if (!formData.name.trim()) {
+                toast.error('Nama Barbershop harus diisi!');
+                return false;
+            }
+            if (!formData.address.trim()) {
+                toast.error('Alamat Lengkap harus diisi!');
+                return false;
+            }
+            if (!formData.city.trim()) {
+                toast.error('Kota harus diisi!');
+                return false;
+            }
+        } else if (currentStep === 1) {
+            // Step 2: Jam Operasional
+            const activeDay = Object.entries(formData.opening_hours).find(([day, hours]) => hours.aktif);
+            if (!activeDay) {
+                toast.error('Minimal harus ada 1 hari operasional yang aktif!');
+                return false;
+            }
+            // Check if active days have valid time
+            for (const [day, hours] of Object.entries(formData.opening_hours)) {
+                if (hours.aktif) {
+                    if (!hours.buka || !hours.tutup) {
+                        toast.error(`Jam operasional untuk ${day} harus diisi!`);
+                        return false;
+                    }
+                    if (hours.buka >= hours.tutup) {
+                        toast.error(`Jam tutup ${day} harus lebih besar dari jam buka!`);
+                        return false;
+                    }
+                }
+            }
+        } else if (currentStep === 2) {
+            // Step 3: Dokumen
+            if (!ktpFile) {
+                toast.error('File KTP harus diupload!');
+                return false;
+            }
+            if (!permitFile) {
+                toast.error('File Izin Usaha harus diupload!');
+                return false;
+            }
+        }
+        return true;
+    };
+
+    const handleNext = () => {
+        if (validateCurrentStep()) {
+            setCurrentStep(prev => prev + 1);
+        }
+    };
+    
     const handlePrev = () => setCurrentStep(prev => prev - 1);
 
     const handleChange = (e) => {
@@ -84,6 +140,12 @@ const RegisterBarbershopPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        // Validate final step before submitting
+        if (!validateCurrentStep()) {
+            return;
+        }
+
         setIsSubmitting(true);
 
         const finalFormData = new FormData();
@@ -95,13 +157,24 @@ const RegisterBarbershopPage = () => {
         if (permitFile) finalFormData.append('permit', permitFile);
         
         try {
-            await api.post('/barbershops/register', finalFormData, {
+            const response = await api.post('/barbershops/register', finalFormData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            alert('Pendaftaran barbershop berhasil! Data Anda sedang direview oleh Admin.');
-            navigate('/dashboard'); // <-- Diarahkan ke dashboard utama
+            
+            toast.success('Pendaftaran barbershop berhasil! Data Anda sedang direview oleh Admin.');
+            
+            // Get current user role from localStorage or API response
+            const userRole = localStorage.getItem('role') || response.data?.user?.role;
+            
+            // Conditional navigation based on role
+            if (userRole === 'owner') {
+                navigate('/owner/my-barbershops');
+            } else {
+                // Default to dashboard for customer or other roles
+                navigate('/dashboard');
+            }
         } catch (err) {
-            setError(err.response?.data?.message || 'Pendaftaran gagal. Periksa kembali data Anda.');
+            toast.error(err.response?.data?.message || 'Pendaftaran gagal. Periksa kembali data Anda.');
         } finally {
             setIsSubmitting(false);
         }

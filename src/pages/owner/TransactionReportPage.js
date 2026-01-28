@@ -3,10 +3,36 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
-import { FiArrowLeft, FiDownload, FiCalendar, FiDollarSign, FiTrendingUp } from 'react-icons/fi';
+import { FiArrowLeft, FiDownload, FiCalendar, FiTrendingUp, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+// import { jsPDF } from 'jspdf';
+
+
+// Custom Rupiah Icon Component
+const RupiahIcon = ({ className }) => (
+    <svg 
+        className={className}
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+    >
+        <text 
+            x="50%" 
+            y="50%" 
+            dominantBaseline="middle" 
+            textAnchor="middle" 
+            fontSize="14" 
+            fontWeight="bold"
+            fill="currentColor"
+            stroke="none"
+        >
+            Rp
+        </text>
+    </svg>
+);
 
 const TransactionReportPage = () => {
     const { barbershopId } = useParams();
@@ -18,9 +44,18 @@ const TransactionReportPage = () => {
         endDate: ''
     });
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
     useEffect(() => {
         fetchReport();
     }, [reportType, barbershopId]);
+
+    // Reset to first page when data changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [reportData, itemsPerPage]);
 
     const fetchReport = async () => {
         setLoading(true);
@@ -105,93 +140,149 @@ const TransactionReportPage = () => {
         toast.success('Laporan Excel berhasil diunduh!');
     };
 
-    const handleExportPDF = () => {
-        if (!reportData) return;
+    // const handleExportPDF = () => {
+    //     if (!reportData) return;
 
-        const doc = new jsPDF();
+    //     const doc = new jsPDF();
         
-        // Header
-        doc.setFontSize(18);
-        doc.text('LAPORAN TRANSAKSI', 14, 20);
+    //     // Header
+    //     doc.setFontSize(18);
+    //     doc.text('LAPORAN TRANSAKSI', 14, 20);
         
-        doc.setFontSize(12);
-        doc.text(`Barbershop: ${reportData.barbershop.name}`, 14, 30);
-        doc.text(`Periode: ${new Date(reportData.period.start).toLocaleDateString('id-ID')} - ${new Date(reportData.period.end).toLocaleDateString('id-ID')}`, 14, 37);
+    //     doc.setFontSize(12);
+    //     doc.text(`Barbershop: ${reportData.barbershop.name}`, 14, 30);
+    //     doc.text(`Periode: ${new Date(reportData.period.start).toLocaleDateString('id-ID')} - ${new Date(reportData.period.end).toLocaleDateString('id-ID')}`, 14, 37);
         
-        // Summary
-        doc.setFontSize(14);
-        doc.text('RINGKASAN', 14, 50);
-        doc.setFontSize(11);
-        doc.text(`Total Pendapatan: Rp ${reportData.summary.totalRevenue.toLocaleString('id-ID')}`, 14, 58);
-        doc.text(`Total Transaksi: ${reportData.summary.totalTransactions}`, 14, 65);
-        doc.text(`Rata-rata Transaksi: Rp ${reportData.summary.averageTransaction.toLocaleString('id-ID')}`, 14, 72);
+    //     // Summary
+    //     doc.setFontSize(14);
+    //     doc.text('RINGKASAN', 14, 50);
+    //     doc.setFontSize(11);
+    //     doc.text(`Total Pendapatan: Rp ${reportData.summary.totalRevenue.toLocaleString('id-ID')}`, 14, 58);
+    //     doc.text(`Total Transaksi: ${reportData.summary.totalTransactions}`, 14, 65);
+    //     doc.text(`Rata-rata Transaksi: Rp ${reportData.summary.averageTransaction.toLocaleString('id-ID')}`, 14, 72);
 
-        // Transactions Table
-        doc.setFontSize(14);
-        doc.text('DETAIL TRANSAKSI', 14, 85);
+    //     // Transactions Table
+    //     doc.setFontSize(14);
+    //     doc.text('DETAIL TRANSAKSI', 14, 85);
         
-        const tableData = reportData.transactions.map(t => [
-            new Date(t.date).toLocaleDateString('id-ID'),
-            t.customer_name,
-            t.service_name,
-            t.staff_name || '-',
-            `Rp ${t.price.toLocaleString('id-ID')}`
-        ]);
+    //     const tableData = reportData.transactions.map(t => [
+    //         new Date(t.date).toLocaleDateString('id-ID'),
+    //         t.customer_name,
+    //         t.service_name,
+    //         t.staff_name || '-',
+    //         `Rp ${t.price.toLocaleString('id-ID')}`
+    //     ]);
 
-        doc.autoTable({
-            startY: 90,
-            head: [['Tanggal', 'Customer', 'Layanan', 'Staff', 'Harga']],
-            body: tableData,
-            theme: 'grid',
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [79, 70, 229] }
-        });
+    //     doc.autoTable({
+    //         startY: 90,
+    //         head: [['Tanggal', 'Customer', 'Layanan', 'Staff', 'Harga']],
+    //         body: tableData,
+    //         theme: 'grid',
+    //         styles: { fontSize: 9 },
+    //         headStyles: { fillColor: [79, 70, 229] }
+    //     });
 
-        // New page for stats
-        doc.addPage();
+    //     // New page for stats
+    //     doc.addPage();
         
-        // Daily Stats
-        doc.setFontSize(14);
-        doc.text('STATISTIK HARIAN', 14, 20);
+    //     // Daily Stats
+    //     doc.setFontSize(14);
+    //     doc.text('STATISTIK HARIAN', 14, 20);
         
-        const dailyTableData = reportData.dailyStats.map(d => [
-            d.date,
-            d.count.toString(),
-            `Rp ${d.revenue.toLocaleString('id-ID')}`
-        ]);
+    //     const dailyTableData = reportData.dailyStats.map(d => [
+    //         d.date,
+    //         d.count.toString(),
+    //         `Rp ${d.revenue.toLocaleString('id-ID')}`
+    //     ]);
 
-        doc.autoTable({
-            startY: 25,
-            head: [['Tanggal', 'Jumlah', 'Pendapatan']],
-            body: dailyTableData,
-            theme: 'grid',
-            styles: { fontSize: 10 },
-            headStyles: { fillColor: [79, 70, 229] }
-        });
+    //     doc.autoTable({
+    //         startY: 25,
+    //         head: [['Tanggal', 'Jumlah', 'Pendapatan']],
+    //         body: dailyTableData,
+    //         theme: 'grid',
+    //         styles: { fontSize: 10 },
+    //         headStyles: { fillColor: [79, 70, 229] }
+    //     });
 
-        // Service Stats
-        const finalY = doc.lastAutoTable.finalY + 15;
-        doc.setFontSize(14);
-        doc.text('STATISTIK PER LAYANAN', 14, finalY);
+    //     // Service Stats
+    //     const finalY = doc.lastAutoTable.finalY + 15;
+    //     doc.setFontSize(14);
+    //     doc.text('STATISTIK PER LAYANAN', 14, finalY);
         
-        const serviceTableData = reportData.serviceStats.map(s => [
-            s.name,
-            s.count.toString(),
-            `Rp ${s.revenue.toLocaleString('id-ID')}`
-        ]);
+    //     const serviceTableData = reportData.serviceStats.map(s => [
+    //         s.name,
+    //         s.count.toString(),
+    //         `Rp ${s.revenue.toLocaleString('id-ID')}`
+    //     ]);
 
-        doc.autoTable({
-            startY: finalY + 5,
-            head: [['Layanan', 'Jumlah', 'Pendapatan']],
-            body: serviceTableData,
-            theme: 'grid',
-            styles: { fontSize: 10 },
-            headStyles: { fillColor: [79, 70, 229] }
-        });
+    //     doc.autoTable({
+    //         startY: finalY + 5,
+    //         head: [['Layanan', 'Jumlah', 'Pendapatan']],
+    //         body: serviceTableData,
+    //         theme: 'grid',
+    //         styles: { fontSize: 10 },
+    //         headStyles: { fillColor: [79, 70, 229] }
+    //     });
 
-        const fileName = `Laporan_${reportData.barbershop.name}_${reportType}_${Date.now()}.pdf`;
-        doc.save(fileName);
-        toast.success('Laporan PDF berhasil diunduh!');
+    //     const fileName = `Laporan_${reportData.barbershop.name}_${reportType}_${Date.now()}.pdf`;
+    //     doc.save(fileName);
+    //     toast.success('Laporan PDF berhasil diunduh!');
+    // };
+
+    // Pagination calculations
+    const getPaginatedData = () => {
+        if (!reportData || !reportData.transactions) return [];
+        
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return reportData.transactions.slice(startIndex, endIndex);
+    };
+
+    const getTotalPages = () => {
+        if (!reportData || !reportData.transactions) return 0;
+        return Math.ceil(reportData.transactions.length / itemsPerPage);
+    };
+
+    const handlePageChange = (newPage) => {
+        setCurrentPage(newPage);
+        // Scroll to top of transactions table
+        document.getElementById('transactions-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const getPageNumbers = () => {
+        const totalPages = getTotalPages();
+        const pages = [];
+        const maxVisiblePages = 5;
+
+        if (totalPages <= maxVisiblePages) {
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            if (currentPage <= 3) {
+                for (let i = 1; i <= 4; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 2) {
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 3; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+            } else {
+                pages.push(1);
+                pages.push('...');
+                pages.push(currentPage - 1);
+                pages.push(currentPage);
+                pages.push(currentPage + 1);
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+
+        return pages;
     };
 
     if (loading) {
@@ -286,7 +377,7 @@ const TransactionReportPage = () => {
                                         Rp {reportData.summary.totalRevenue.toLocaleString('id-ID')}
                                     </p>
                                 </div>
-                                <FiDollarSign className="text-4xl text-green-500" />
+                                <RupiahIcon className="text-4xl text-green-500 w-12 h-12" />
                             </div>
                         </div>
 
@@ -310,7 +401,7 @@ const TransactionReportPage = () => {
                                         Rp {reportData.summary.averageTransaction.toLocaleString('id-ID')}
                                     </p>
                                 </div>
-                                <FiDollarSign className="text-4xl text-purple-500" />
+                                <RupiahIcon className="text-4xl text-purple-500 w-12 h-12" />
                             </div>
                         </div>
                     </div>
@@ -393,9 +484,27 @@ const TransactionReportPage = () => {
                         </div>
                     </div>
 
-                    {/* Transactions Table */}
-                    <div className="bg-white rounded-lg shadow-md p-6">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Detail Transaksi</h3>
+                    {/* Transactions Table with Pagination */}
+                    <div id="transactions-table" className="bg-white rounded-lg shadow-md p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold text-gray-800">Detail Transaksi</h3>
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm text-gray-600">Tampilkan:</label>
+                                <select
+                                    value={itemsPerPage}
+                                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                                <span className="text-sm text-gray-600">per halaman</span>
+                            </div>
+                        </div>
+
                         <div className="overflow-x-auto">
                             <table className="min-w-full">
                                 <thead className="bg-gray-50">
@@ -409,7 +518,7 @@ const TransactionReportPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {reportData.transactions.map((transaction) => (
+                                    {getPaginatedData().map((transaction) => (
                                         <tr key={transaction.booking_id} className="hover:bg-gray-50">
                                             <td className="px-4 py-3 text-sm text-gray-900">
                                                 {new Date(transaction.date).toLocaleDateString('id-ID')}
@@ -440,6 +549,68 @@ const TransactionReportPage = () => {
                                 </div>
                             )}
                         </div>
+
+                        {/* Pagination Controls */}
+                        {reportData.transactions.length > 0 && (
+                            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                {/* Info */}
+                                <div className="text-sm text-gray-600">
+                                    Menampilkan {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, reportData.transactions.length)} dari {reportData.transactions.length} transaksi
+                                </div>
+
+                                {/* Pagination Buttons */}
+                                <div className="flex items-center gap-2">
+                                    {/* Previous Button */}
+                                    <button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        className={`p-2 rounded-md ${
+                                            currentPage === 1
+                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                : 'bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-300'
+                                        }`}
+                                    >
+                                        <FiChevronLeft className="w-5 h-5" />
+                                    </button>
+
+                                    {/* Page Numbers */}
+                                    <div className="flex gap-1">
+                                        {getPageNumbers().map((page, index) => (
+                                            page === '...' ? (
+                                                <span key={`ellipsis-${index}`} className="px-3 py-2 text-gray-500">
+                                                    ...
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    key={page}
+                                                    onClick={() => handlePageChange(page)}
+                                                    className={`px-3 py-2 rounded-md text-sm font-medium ${
+                                                        currentPage === page
+                                                            ? 'bg-indigo-600 text-white'
+                                                            : 'bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-300'
+                                                    }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            )
+                                        ))}
+                                    </div>
+
+                                    {/* Next Button */}
+                                    <button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === getTotalPages()}
+                                        className={`p-2 rounded-md ${
+                                            currentPage === getTotalPages()
+                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                : 'bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-300'
+                                        }`}
+                                    >
+                                        <FiChevronRight className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </>
             )}
