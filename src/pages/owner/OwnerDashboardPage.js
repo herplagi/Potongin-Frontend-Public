@@ -2,8 +2,33 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import api from '../../services/api';
-import { FiDollarSign, FiCalendar, FiScissors, FiUsers, FiArrowLeft, FiFileText } from 'react-icons/fi';
+import { FiDollarSign, FiCalendar, FiScissors, FiArrowLeft, FiFileText } from 'react-icons/fi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+
+const RupiahIcon = ({ className }) => (
+    <svg 
+        className={className}
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round"
+    >
+        <text 
+            x="50%" 
+            y="50%" 
+            dominantBaseline="middle" 
+            textAnchor="middle" 
+            fontSize="18" 
+            fontWeight="bold"
+            fill="currentColor"
+            stroke="none"
+        >
+            Rp
+        </text>
+    </svg>
+);
 
 const KpiCard = ({ title, value, icon, formatAsCurrency = false }) => (
   <div className="p-6 bg-white rounded-2xl shadow-md">
@@ -129,7 +154,7 @@ const OwnerDashboardPage = () => {
                 <KpiCard 
                     title="Pendapatan Hari Ini" 
                     value={kpis?.revenueToday || 0} 
-                    icon={<FiDollarSign size={24}/>} 
+                    icon={<RupiahIcon className="w-6 h-6" />} 
                     formatAsCurrency 
                 />
                 <KpiCard 

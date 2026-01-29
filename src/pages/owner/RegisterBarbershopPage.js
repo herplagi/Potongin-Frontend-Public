@@ -157,20 +157,37 @@ const RegisterBarbershopPage = () => {
         if (permitFile) finalFormData.append('permit', permitFile);
         
         try {
-            const response = await api.post('/barbershops/register', finalFormData, {
+            await api.post('/barbershops/register', finalFormData, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             
             toast.success('Pendaftaran barbershop berhasil! Data Anda sedang direview oleh Admin.');
             
-            // Get current user role from localStorage or API response
-            const userRole = localStorage.getItem('role') || response.data?.user?.role;
+            // Get token from localStorage and decode to get role
+            const token = localStorage.getItem('token');
+            let userRole = 'customer'; // default
+            
+            if (token) {
+                try {
+                    // Decode JWT token (JWT has 3 parts separated by dots)
+                    const base64Url = token.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+                    
+                    const decoded = JSON.parse(jsonPayload);
+                    userRole = decoded.role || 'customer';
+                } catch (err) {
+                    // If token decode fails, use default role
+                }
+            }
             
             // Conditional navigation based on role
-            if (userRole === 'owner') {
+            if (userRole === 'owner' || userRole === 'customer_owner') {
                 navigate('/owner/my-barbershops');
             } else {
-                // Default to dashboard for customer or other roles
+                // Customer goes to customer dashboard
                 navigate('/dashboard');
             }
         } catch (err) {
