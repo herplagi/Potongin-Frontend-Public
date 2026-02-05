@@ -103,6 +103,18 @@ const OwnerSidebar = () => {
     { path: "reports", icon: FiFileText, label: "Laporan" },
   ];
 
+  // Fungsi untuk mendapatkan URL foto profil
+  const getProfilePictureUrl = () => {
+    if (user?.picture) {
+      if (user.picture.startsWith("http")) {
+        return user.picture;
+      }
+      const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
+      return `${baseUrl}${user.picture}`;
+    }
+    return null;
+  };
+
   return (
     <div className="flex flex-col w-64 h-screen bg-[#1a1d29] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
       {/* Header dengan Logo dan Notifikasi */}
@@ -119,17 +131,27 @@ const OwnerSidebar = () => {
       {/* User Profile Section */}
       <div className="px-6 py-6 border-b border-gray-800">
         <div className="flex flex-col items-center text-center">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-3 ring-4 ring-gray-800">
-            <span className="text-white font-bold text-2xl">
-              {user?.name?.charAt(0).toUpperCase()}
-            </span>
+          <div className="w-20 h-20 rounded-full mb-3 ring-4 ring-gray-800 overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600">
+            {getProfilePictureUrl() ? (
+              <img
+                src={getProfilePictureUrl()}
+                alt={user?.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error("Sidebar image load error");
+                  e.target.style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">
+                  {user?.name?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
-          <h3 className="text-white font-semibold text-base">
-            {user?.name}
-          </h3>
-          <p className="text-gray-400 text-xs mt-1">
-            {user?.email}
-          </p>
+          <h3 className="text-white font-semibold text-base">{user?.name}</h3>
+          <p className="text-gray-400 text-xs mt-1">{user?.email}</p>
         </div>
       </div>
 
@@ -140,9 +162,6 @@ const OwnerSidebar = () => {
             <h2 className="text-[#fbbf24] text-xs font-bold uppercase tracking-wider">
               Main Menu
             </h2>
-            {/* <p className="text-gray-500 text-xs mt-0.5">
-              Quick access navigation
-            </p> */}
           </div>
 
           <NavLink
@@ -180,9 +199,6 @@ const OwnerSidebar = () => {
             <h2 className="text-[#fbbf24] text-xs font-bold uppercase tracking-wider">
               Barbershops
             </h2>
-            {/* <p className="text-gray-500 text-xs mt-0.5">
-              Manage your barbershop locations
-            </p> */}
           </div>
 
           {loading ? (

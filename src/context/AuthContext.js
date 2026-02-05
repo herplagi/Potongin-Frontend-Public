@@ -49,7 +49,8 @@ export const AuthProvider = ({ children }) => {
         id: userData.user_id,
         name: userData.name,
         email: userData.email,
-        phone_number: userData.phone_number, // ✅ TAMBAHKAN INI
+        phone_number: userData.phone_number,
+        picture: userData.picture,
         role: userData.role,
         is_customer: userData.is_customer,
         is_owner: userData.is_owner,
@@ -64,7 +65,8 @@ export const AuthProvider = ({ children }) => {
           id: decodedToken.id,
           name: decodedToken.name,
           email: decodedToken.email,
-          phone_number: decodedToken.phone_number || "", // ✅ FALLBACK
+          phone_number: decodedToken.phone_number || "",
+          picture: decodedToken.picture || "",
           role: decodedToken.role,
           is_customer: decodedToken.is_customer,
           is_owner: decodedToken.is_owner,

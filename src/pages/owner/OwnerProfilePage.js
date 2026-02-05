@@ -1,6 +1,6 @@
 // src/pages/owner/OwnerProfilePage.js
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -13,11 +13,11 @@ import {
   FiSave,
   FiX,
   FiLock,
+  FiCamera,
 } from "react-icons/fi";
 
 const OwnerProfilePage = () => {
   const { user, setUser } = useAuth();
-  const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -25,6 +25,9 @@ const OwnerProfilePage = () => {
     phone_number: "",
     email: "",
   });
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Inisialisasi formData dari user saat pertama kali atau saat beralih mode
   useEffect(() => {
@@ -36,6 +39,74 @@ const OwnerProfilePage = () => {
       });
     }
   }, [user]);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Ukuran file terlalu besar. Maksimal 5MB.");
+        return;
+      }
+
+      // Validasi tipe file
+      if (!file.type.startsWith("image/")) {
+        toast.error("File harus berupa gambar.");
+        return;
+      }
+
+      // ✅ HAPUS: setSelectedFile(file);
+
+      // Buat preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+
+      // Langsung upload
+      handleUploadPhoto(file);
+    }
+  };
+
+  const handleUploadPhoto = async (file) => {
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("picture", file);
+
+      const response = await api.post("/users/profile-picture", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Update user context dengan picture URL dari response
+      const pictureUrl =
+        response.data.picture_url || response.data.user?.picture;
+
+      setUser((prev) => ({
+        ...prev,
+        picture: pictureUrl,
+      }));
+
+      // Clear preview setelah upload berhasil
+      setPreviewUrl(null);
+      // ✅ HAPUS: setSelectedFile(null);
+
+      toast.success("Foto profil berhasil diperbarui!");
+    } catch (error) {
+      console.error("Upload photo error:", error);
+      toast.error(
+        error.response?.data?.message || "Gagal mengunggah foto profil"
+      );
+      setPreviewUrl(null);
+      // ✅ HAPUS: setSelectedFile(null);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -89,7 +160,7 @@ const OwnerProfilePage = () => {
       }));
 
       toast.success("Profil berhasil diperbarui!");
-      setIsEditing(false); // Kembali ke mode tampil
+      setIsEditing(false);
     } catch (error) {
       console.error("Update profile error:", error);
       toast.error(error.response?.data?.message || "Gagal memperbarui profil");
@@ -106,6 +177,20 @@ const OwnerProfilePage = () => {
     );
   }
 
+  // Fungsi untuk mendapatkan URL gambar profil
+  const getProfilePictureUrl = () => {
+    if (previewUrl) return previewUrl;
+
+    if (user.picture) {
+      if (user.picture.startsWith("http")) {
+        return user.picture;
+      }
+      return `http://localhost:5000${user.picture}`;
+    }
+
+    return null;
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Header */}
@@ -119,11 +204,54 @@ const OwnerProfilePage = () => {
 
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center">
-              <span className="text-lg font-semibold text-indigo-700">
-                {user.name.charAt(0).toUpperCase()}
-              </span>
+            {/* Avatar dengan fitur upload */}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full overflow-hidden ring-4 ring-indigo-50 bg-gray-100">
+                {getProfilePictureUrl() ? (
+                  <img
+                    src={getProfilePictureUrl()}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      console.error("Image load error:", e.target.src);
+                      e.target.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-indigo-100 flex items-center justify-center">
+                    <span className="text-2xl font-semibold text-indigo-700">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Button untuk upload foto */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="absolute bottom-0 right-0 p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg transition-all"
+                title="Ubah foto profil"
+              >
+                {uploading ? (
+                  <div className="animate-spin">
+                    <FiCamera size={14} />
+                  </div>
+                ) : (
+                  <FiCamera size={14} />
+                )}
+              </button>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
             </div>
+
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Profil Saya</h1>
               <p className="text-gray-500 text-sm">Informasi akun pemilik</p>
@@ -153,9 +281,14 @@ const OwnerProfilePage = () => {
       {/* Konten Profil */}
       {isEditing ? (
         /* --- Mode Edit --- */
-        <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-xl border border-gray-200">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-6 bg-white p-6 rounded-xl border border-gray-200"
+        >
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nama Lengkap</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nama Lengkap
+            </label>
             <div className="relative">
               <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -170,7 +303,9 @@ const OwnerProfilePage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email
+            </label>
             <div className="relative">
               <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -180,11 +315,15 @@ const OwnerProfilePage = () => {
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-default"
               />
             </div>
-            <p className="mt-1 text-xs text-gray-500">Email tidak dapat diubah.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Email tidak dapat diubah.
+            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nomor Telepon</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nomor Telepon
+            </label>
             <div className="relative">
               <FiPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
