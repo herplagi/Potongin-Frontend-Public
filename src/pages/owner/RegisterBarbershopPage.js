@@ -1,280 +1,361 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import api from '../../services/api';
-import Stepper from '../../components/ui/Stepper';
-import { FiUploadCloud, FiArrowLeft } from 'react-icons/fi';
-
-// Komponen File Input Kustom
-const CustomFileInput = ({ label, required, onChange, fileName }) => (
-    <div>
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
-        <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
-            <div className="space-y-1 text-center">
-                <FiUploadCloud className="mx-auto h-12 w-12 text-gray-400" />
-                <div className="flex text-sm text-gray-600">
-                    <label htmlFor={label} className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none">
-                        <span>Upload sebuah file</span>
-                        <input id={label} name={label} type="file" className="sr-only" onChange={onChange} required={required} />
-                    </label>
-                    <p className="pl-1">atau seret dan lepas</p>
-                </div>
-                {fileName ? (
-                    <p className="text-sm text-green-600 font-semibold">{fileName}</p>
-                ) : (
-                    <p className="text-xs text-gray-500">PNG, JPG, PDF hingga 10MB</p>
-                )}
-            </div>
-        </div>
-    </div>
-);
-
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import api from "../../services/api";
 
 const RegisterBarbershopPage = () => {
-    const navigate = useNavigate();
-    const [currentStep, setCurrentStep] = useState(0);
-    const [error, setError] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-    const [formData, setFormData] = useState({
-        name: '',
-        address: '',
-        city: '',
-        opening_hours: {
-            Senin: { buka: '09:00', tutup: '21:00', aktif: true },
-            Selasa: { buka: '09:00', tutup: '21:00', aktif: true },
-            Rabu: { buka: '09:00', tutup: '21:00', aktif: true },
-            Kamis: { buka: '09:00', tutup: '21:00', aktif: true },
-            Jumat: { buka: '09:00', tutup: '21:00', aktif: true },
-            Sabtu: { buka: '10:00', tutup: '22:00', aktif: true },
-            Minggu: { buka: '', tutup: '', aktif: false },
-        },
+  const [formData, setFormData] = useState({
+    name: "",
+    address: "",
+    city: "Padang", // ✅ Default value
+  });
+
+  const [openingHours, setOpeningHours] = useState({
+    Senin: { aktif: false, buka: "08:00", tutup: "21:00" },
+    Selasa: { aktif: false, buka: "08:00", tutup: "21:00" },
+    Rabu: { aktif: false, buka: "08:00", tutup: "21:00" },
+    Kamis: { aktif: false, buka: "08:00", tutup: "21:00" },
+    Jumat: { aktif: false, buka: "08:00", tutup: "21:00" },
+    Sabtu: { aktif: false, buka: "08:00", tutup: "21:00" },
+    Minggu: { aktif: false, buka: "08:00", tutup: "21:00" },
+  });
+
+  const [ktpFile, setKtpFile] = useState(null);
+  const [permitFile, setPermitFile] = useState(null);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleScheduleChange = (day, field, value) => {
+    setOpeningHours((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleCheckAll = (checked) => {
+    const updatedHours = {};
+    Object.keys(openingHours).forEach((day) => {
+      updatedHours[day] = {
+        ...openingHours[day],
+        aktif: checked,
+      };
     });
-    const [ktpFile, setKtpFile] = useState(null);
-    const [permitFile, setPermitFile] = useState(null);
+    setOpeningHours(updatedHours);
+  };
 
-    const steps = [{ name: 'Informasi Dasar' }, { name: 'Jam Operasional' }, { name: 'Dokumen' }];
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    // Validation function for each step
-    const validateCurrentStep = () => {
-        if (currentStep === 0) {
-            // Step 1: Informasi Dasar
-            if (!formData.name.trim()) {
-                toast.error('Nama Barbershop harus diisi!');
-                return false;
-            }
-            if (!formData.address.trim()) {
-                toast.error('Alamat Lengkap harus diisi!');
-                return false;
-            }
-            if (!formData.city.trim()) {
-                toast.error('Kota harus diisi!');
-                return false;
-            }
-        } else if (currentStep === 1) {
-            // Step 2: Jam Operasional
-            const activeDay = Object.entries(formData.opening_hours).find(([day, hours]) => hours.aktif);
-            if (!activeDay) {
-                toast.error('Minimal harus ada 1 hari operasional yang aktif!');
-                return false;
-            }
-            // Check if active days have valid time
-            for (const [day, hours] of Object.entries(formData.opening_hours)) {
-                if (hours.aktif) {
-                    if (!hours.buka || !hours.tutup) {
-                        toast.error(`Jam operasional untuk ${day} harus diisi!`);
-                        return false;
-                    }
-                    if (hours.buka >= hours.tutup) {
-                        toast.error(`Jam tutup ${day} harus lebih besar dari jam buka!`);
-                        return false;
-                    }
-                }
-            }
-        } else if (currentStep === 2) {
-            // Step 3: Dokumen
-            if (!ktpFile) {
-                toast.error('File KTP harus diupload!');
-                return false;
-            }
-            if (!permitFile) {
-                toast.error('File Izin Usaha harus diupload!');
-                return false;
-            }
-        }
-        return true;
-    };
+    // ✅ Validasi
+    if (!formData.name || !formData.address) {
+      toast.error("Nama dan alamat barbershop wajib diisi.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
 
-    const handleNext = () => {
-        if (validateCurrentStep()) {
-            setCurrentStep(prev => prev + 1);
-        }
-    };
-    
-    const handlePrev = () => setCurrentStep(prev => prev - 1);
+    if (!ktpFile || !permitFile) {
+      toast.error("File KTP dan Surat Izin wajib diupload.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
 
-    const handleChange = (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
-    
-    const handleTimeChange = (day, type, value) => {
-        setFormData(prev => ({
-            ...prev,
-            opening_hours: {
-                ...prev.opening_hours,
-                [day]: { ...prev.opening_hours[day], [type]: value }
-            }
-        }));
-    };
-    
-    const handleDayToggle = (day) => {
-        setFormData(prev => ({
-            ...prev,
-            opening_hours: {
-                ...prev.opening_hours,
-                [day]: { ...prev.opening_hours[day], aktif: !prev.opening_hours[day].aktif }
-            }
-        }));
-    };
+    // Check if at least one day is active
+    const hasActiveDay = Object.values(openingHours).some((day) => day.aktif);
+    if (!hasActiveDay) {
+      toast.warning("Minimal satu hari harus aktif.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
+    setLoading(true);
 
-        // Validate final step before submitting
-        if (!validateCurrentStep()) {
-            return;
-        }
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append("name", formData.name);
+      formDataToSend.append("address", formData.address);
+      formDataToSend.append("city", formData.city); // ✅ Always Padang
+      formDataToSend.append("opening_hours", JSON.stringify(openingHours));
+      formDataToSend.append("ktp", ktpFile);
+      formDataToSend.append("permit", permitFile);
 
-        setIsSubmitting(true);
+      const response = await api.post("/barbershops/register", formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-        const finalFormData = new FormData();
-        finalFormData.append('name', formData.name);
-        finalFormData.append('address', formData.address);
-        finalFormData.append('city', formData.city);
-        finalFormData.append('opening_hours', JSON.stringify(formData.opening_hours));
-        if (ktpFile) finalFormData.append('ktp', ktpFile);
-        if (permitFile) finalFormData.append('permit', permitFile);
-        
-        try {
-            await api.post('/barbershops/register', finalFormData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            
-            toast.success('Pendaftaran barbershop berhasil! Data Anda sedang direview oleh Admin.');
-            
-            // Get token from localStorage and decode to get role
-            const token = localStorage.getItem('token');
-            let userRole = 'customer'; // default
-            
-            if (token) {
-                try {
-                    // Decode JWT token (JWT has 3 parts separated by dots)
-                    const base64Url = token.split('.')[1];
-                    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                    }).join(''));
-                    
-                    const decoded = JSON.parse(jsonPayload);
-                    userRole = decoded.role || 'customer';
-                } catch (err) {
-                    // If token decode fails, use default role
-                }
-            }
-            
-            // Conditional navigation based on role
-            if (userRole === 'owner' || userRole === 'customer_owner') {
-                navigate('/owner/my-barbershops');
-            } else {
-                // Customer goes to customer dashboard
-                navigate('/dashboard');
-            }
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Pendaftaran gagal. Periksa kembali data Anda.');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
+      toast.success("Pendaftaran barbershop berhasil! Menunggu verifikasi admin.", {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      
+      setTimeout(() => {
+        navigate("/owner/my-barbershops");
+      }, 2000);
+    } catch (err) {
+      console.error("Register barbershop error:", err);
+      
+      // ✅ Tampilkan pesan error spesifik dari backend menggunakan toast
+      const errorMessage = err.response?.data?.message || 
+                          "Gagal mendaftarkan barbershop. Silakan coba lagi.";
+      
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <div className="max-w-4xl mx-auto p-4 sm:p-8">
-            <div className="mb-8">
-                <button 
-                    onClick={() => navigate(-1)} 
-                    className="flex items-center text-sm font-medium text-gray-600 hover:text-indigo-600 transition-colors"
+  return (
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            Daftarkan Barbershop Anda
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Lengkapi form berikut untuk mendaftarkan barbershop Anda
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Nama Barbershop */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Nama Barbershop <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Contoh: Barbershop Modern"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                ℹ️ Nama boleh sama dengan barbershop lain
+              </p>
+            </div>
+
+            {/* Alamat */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Alamat Lengkap <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="address"
+                value={formData.address}
+                onChange={handleInputChange}
+                rows="3"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                placeholder="Contoh: Jl. Veteran No. 123, Kelurahan Padang Barat"
+                required
+              />
+              <p className="text-xs text-red-500 mt-1">
+                ⚠️ Alamat tidak boleh sama dengan barbershop lain
+              </p>
+            </div>
+
+            {/* Kota - Read Only */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Kota <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                readOnly
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                ℹ️ Saat ini sistem hanya tersedia untuk kota Padang
+              </p>
+            </div>
+
+            {/* Jam Operasional */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-semibold text-gray-700">
+                  Jam Operasional <span className="text-red-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleCheckAll(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                 >
-                    <FiArrowLeft className="mr-2" />
-                    Kembali ke Halaman Sebelumnya
+                  Aktifkan Semua
                 </button>
-            </div>
-            <h1 className="text-3xl font-bold text-center mb-8">Daftarkan Barbershop Anda</h1>
-            <div className="mb-12 flex justify-center">
-                <Stepper steps={steps} currentStep={currentStep} />
-            </div>
+              </div>
 
-            <div className="p-8 bg-white rounded-lg shadow-lg">
-                <form onSubmit={handleSubmit}>
-                    {error && <div className="p-3 mb-4 text-red-700 bg-red-100 rounded">{error}</div>}
+              <div className="border border-gray-300 rounded-lg overflow-hidden">
+                {Object.keys(openingHours).map((day, index) => (
+                  <div
+                    key={day}
+                    className={`p-4 ${
+                      index !== Object.keys(openingHours).length - 1
+                        ? "border-b border-gray-200"
+                        : ""
+                    } ${openingHours[day].aktif ? "bg-blue-50" : "bg-white"}`}
+                  >
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex items-center min-w-[120px]">
+                        <input
+                          type="checkbox"
+                          id={`aktif-${day}`}
+                          checked={openingHours[day].aktif}
+                          onChange={(e) =>
+                            handleScheduleChange(day, "aktif", e.target.checked)
+                          }
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label
+                          htmlFor={`aktif-${day}`}
+                          className="ml-2 text-sm font-medium text-gray-800"
+                        >
+                          {day}
+                        </label>
+                      </div>
 
-                    {currentStep === 0 && (
-                        <div className="space-y-4">
-                             <h2 className="text-xl font-semibold">Langkah 1: Informasi Dasar</h2>
-                            <input name="name" placeholder="Nama Barbershop" value={formData.name} onChange={handleChange} required className="w-full px-3 py-2 border rounded-md" />
-                            <textarea name="address" placeholder="Alamat Lengkap" value={formData.address} onChange={handleChange} required className="w-full px-3 py-2 border rounded-md" />
-                            <input name="city" placeholder="Kota" value={formData.city} onChange={handleChange} required className="w-full px-3 py-2 border rounded-md" />
-                        </div>
-                    )}
-
-                    {currentStep === 1 && (
-                        <div>
-                             <h2 className="text-xl font-semibold mb-4">Langkah 2: Jam Operasional</h2>
-                             <div className="space-y-3">
-                                {Object.keys(formData.opening_hours).map(day => (
-                                    <div key={day} className="grid grid-cols-4 gap-2 items-center">
-                                        <label className="flex items-center">
-                                            <input type="checkbox" checked={formData.opening_hours[day].aktif} onChange={() => handleDayToggle(day)} className="h-4 w-4 rounded text-indigo-600"/>
-                                            <span className="ml-2 font-medium">{day}</span>
-                                        </label>
-                                        <input type="time" value={formData.opening_hours[day].buka} onChange={(e) => handleTimeChange(day, 'buka', e.target.value)} disabled={!formData.opening_hours[day].aktif} className="px-3 py-2 border rounded-md disabled:bg-gray-100"/>
-                                        <span>-</span>
-                                        <input type="time" value={formData.opening_hours[day].tutup} onChange={(e) => handleTimeChange(day, 'tutup', e.target.value)} disabled={!formData.opening_hours[day].aktif} className="px-3 py-2 border rounded-md disabled:bg-gray-100"/>
-                                    </div>
-                                ))}
-                             </div>
-                        </div>
-                    )}
-                    
-                    {currentStep === 2 && (
-                         <div className="space-y-6">
-                            <h2 className="text-xl font-semibold">Langkah 3: Dokumen Verifikasi</h2>
-                            <CustomFileInput label="ktp" required={true} onChange={(e) => setKtpFile(e.target.files[0])} fileName={ktpFile?.name} />
-                            <CustomFileInput label="permit" required={true} onChange={(e) => setPermitFile(e.target.files[0])} fileName={permitFile?.name} />
-                         </div>
-                    )}
-                    
-                    <div className="flex justify-between mt-8">
-                        {currentStep > 0 && (
-                            <button type="button" onClick={handlePrev} className="px-6 py-2 font-semibold text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
-                                Kembali
-                            </button>
-                        )}
-                        <div/>
-                        {currentStep < steps.length - 1 && (
-                            <button type="button" onClick={handleNext} className="px-6 py-2 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700">
-                                Lanjutkan
-                            </button>
-                        )}
-                        {currentStep === steps.length - 1 && (
-                            <button type="submit" disabled={isSubmitting} className="px-6 py-2 font-semibold text-white bg-green-600 rounded-md hover:bg-green-700 disabled:bg-green-400">
-                                {isSubmitting ? 'Mengirim...' : 'Selesaikan Pendaftaran'}
-                            </button>
-                        )}
+                      {openingHours[day].aktif && (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-600">Buka</label>
+                            <input
+                              type="time"
+                              value={openingHours[day].buka}
+                              onChange={(e) =>
+                                handleScheduleChange(day, "buka", e.target.value)
+                              }
+                              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-600">Tutup</label>
+                            <input
+                              type="time"
+                              value={openingHours[day].tutup}
+                              onChange={(e) =>
+                                handleScheduleChange(day, "tutup", e.target.value)
+                              }
+                              className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            />
+                          </div>
+                        </>
+                      )}
                     </div>
-                </form>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* Upload KTP */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Upload KTP Pemilik <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => setKtpFile(e.target.files[0])}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                required
+              />
+              {ktpFile && (
+                <p className="text-sm text-green-600 mt-1">
+                  ✓ File terpilih: {ktpFile.name}
+                </p>
+              )}
+            </div>
+
+            {/* Upload Surat Izin */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Upload Surat Izin Usaha <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => setPermitFile(e.target.files[0])}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                required
+              />
+              {permitFile && (
+                <p className="text-sm text-green-600 mt-1">
+                  ✓ File terpilih: {permitFile.name}
+                </p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                Format yang diterima: JPG, PNG, atau PDF
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:bg-gray-400 disabled:cursor-not-allowed transition duration-200 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Mendaftarkan...
+                  </>
+                ) : (
+                  "Daftarkan Barbershop"
+                )}
+              </button>
+
+              <p className="text-xs text-gray-500 text-center mt-3">
+                Dengan mendaftar, Anda menyetujui syarat dan ketentuan yang berlaku
+              </p>
+            </div>
+          </form>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default RegisterBarbershopPage;
