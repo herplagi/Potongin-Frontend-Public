@@ -32,6 +32,15 @@ const OwnerSidebar = () => {
 
   useEffect(() => {
     const fetchBarbershops = async () => {
+      if (!user?.is_owner) {
+        setBarbershops([]);
+        setExpandedShops({});
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
       try {
         const response = await api.get("/barbershops/my-barbershops");
         setBarbershops(response.data);
@@ -41,13 +50,17 @@ const OwnerSidebar = () => {
           setExpandedShops({ [urlBarbershopId]: true });
         }
       } catch (error) {
-        console.error("Failed to fetch barbershops:", error);
+        if (error?.response?.status !== 403) {
+          console.error("Failed to fetch barbershops:", error);
+        }
+        setBarbershops([]);
       } finally {
         setLoading(false);
       }
     };
+
     fetchBarbershops();
-  }, [location.pathname]);
+  }, [location.pathname, user?.is_owner]);
 
   const handleLogout = () => {
     logout();

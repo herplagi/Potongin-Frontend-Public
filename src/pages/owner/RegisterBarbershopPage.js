@@ -88,7 +88,7 @@ const RegisterBarbershopPage = () => {
       const formDataToSend = new FormData();
       formDataToSend.append("name", formData.name);
       formDataToSend.append("address", formData.address);
-      formDataToSend.append("city", formData.city); // ✅ Always Padang
+      formDataToSend.append("city", formData.city);
       formDataToSend.append("opening_hours", JSON.stringify(openingHours));
       formDataToSend.append("ktp", ktpFile);
       formDataToSend.append("permit", permitFile);

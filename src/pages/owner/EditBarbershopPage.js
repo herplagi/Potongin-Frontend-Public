@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
-import { FiUploadCloud, FiArrowLeft, FiAlertTriangle } from 'react-icons/fi';
+import { FiUploadCloud, FiArrowLeft, FiAlertTriangle, FiLock } from 'react-icons/fi';
 
 // Komponen File Input Kustom (tidak ada perubahan)
 const CustomFileInput = ({ label, onChange, fileName }) => (
@@ -33,7 +33,7 @@ const EditBarbershopPage = () => {
     const navigate = useNavigate();
     
     const [formData, setFormData] = useState({ name: '', address: '', city: '' });
-    const [rejectionReason, setRejectionReason] = useState(''); // <-- 1. STATE BARU UNTUK PESAN
+    const [rejectionReason, setRejectionReason] = useState('');
     const [ktpFile, setKtpFile] = useState(null);
     const [permitFile, setPermitFile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -47,12 +47,9 @@ const EditBarbershopPage = () => {
                 const { name, address, city, rejection_reason } = response.data;
                 setFormData({ name, address, city });
 
-                // --- 2. AMBIL DAN SIMPAN PESAN PENOLAKAN ---
                 if (rejection_reason) {
                     setRejectionReason(rejection_reason);
                 }
-                // ------------------------------------------
-
             } catch (err) {
                 setError("Gagal memuat data barbershop.");
             } finally {
@@ -98,7 +95,6 @@ const EditBarbershopPage = () => {
             <h1 className="text-3xl font-bold text-gray-800">Perbaiki Pendaftaran Barbershop</h1>
             <p className="mt-2 text-gray-600">Perbarui data atau dokumen Anda di bawah ini, lalu ajukan ulang untuk verifikasi oleh Admin.</p>
             
-            {/* --- 3. TAMPILKAN PESAN PENOLAKAN JIKA ADA --- */}
             {rejectionReason && (
                 <div className="mt-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg">
                     <div className="flex">
@@ -112,7 +108,6 @@ const EditBarbershopPage = () => {
                     </div>
                 </div>
             )}
-            {/* ------------------------------------------ */}
             
             <form onSubmit={handleSubmit} className="mt-6 space-y-8">
                 <div className="p-6 bg-white rounded-lg shadow-md">
@@ -120,15 +115,46 @@ const EditBarbershopPage = () => {
                     <div className="mt-4 space-y-4">
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nama Barbershop</label>
-                            <input id="name" type="text" name="name" value={formData.name} onChange={handleChange} required className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md"/>
+                            <input
+                                id="name"
+                                type="text"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleChange}
+                                required
+                                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md"
+                            />
                         </div>
                         <div>
                             <label htmlFor="address" className="block text-sm font-medium text-gray-700">Alamat Lengkap</label>
-                            <input id="address" type="text" name="address" value={formData.address} onChange={handleChange} required className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md"/>
+                            <input
+                                id="address"
+                                type="text"
+                                name="address"
+                                value={formData.address}
+                                onChange={handleChange}
+                                required
+                                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md"
+                            />
                         </div>
+
+                        {/* Kota — terkunci, tidak bisa diubah user */}
                         <div>
-                            <label htmlFor="city" className="block text-sm font-medium text-gray-700">Kota</label>
-                            <input id="city" type="text" name="city" value={formData.city} onChange={handleChange} required className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md"/>
+                            <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                                Kota
+                            </label>
+                            <div className="relative mt-1">
+                                <input
+                                    id="city"
+                                    type="text"
+                                    name="city"
+                                    value={formData.city}
+                                    readOnly
+                                    className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed select-none"
+                                />
+                                <FiLock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            </div>
+                            <p className="mt-1 text-xs text-gray-400">Saat ini sistem hanya tersedia untuk kota Padang.</p>
                         </div>
                     </div>
                 </div>
@@ -143,7 +169,11 @@ const EditBarbershopPage = () => {
                 </div>
 
                 <div className="flex justify-end">
-                    <button type="submit" disabled={isSubmitting} className="px-8 py-3 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400">
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="px-8 py-3 font-semibold text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:bg-indigo-400"
+                    >
                         {isSubmitting ? "Menyimpan..." : "Simpan & Ajukan Ulang"}
                     </button>
                 </div>

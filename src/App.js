@@ -42,6 +42,18 @@ import ManageSchedulePage from "./pages/owner/ManageSchedulePage";
 import OwnerProfilePage from "./pages/owner/OwnerProfilePage";
 import OwnerChangePasswordPage from "./pages/owner/OwnerChangePasswordPage";
 
+const OwnerOnlyElement = ({ element }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return null;
+
+  if (!user?.is_owner) {
+    return <Navigate to="/register-barbershop" replace />;
+  }
+
+  return element;
+};
+
 const HomeRedirect = () => {
   const { user } = useAuth();
 
@@ -49,7 +61,6 @@ const HomeRedirect = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // ✅ UPDATED: Priority Owner > Customer
   if (user.is_owner) {
     return <Navigate to="/owner/my-barbershops" replace />;
   }
@@ -108,51 +119,53 @@ const AppContent = () => {
           />
 
           {/* Owner Routes - Daftar Barbershop */}
-          <Route path="/owner/my-barbershops" element={<MyBarbershopsPage />} />
+          <Route
+            path="/owner/my-barbershops"
+            element={<OwnerOnlyElement element={<MyBarbershopsPage />} />}
+          />
 
           {/* Owner Routes - Kelola Barbershop Spesifik */}
           <Route
             path="/owner/barbershop/:barbershopId/dashboard"
-            element={<OwnerDashboardPage />}
+            element={<OwnerOnlyElement element={<OwnerDashboardPage />} />}
           />
           <Route
             path="/owner/barbershop/:barbershopId/edit"
-            element={<EditBarbershopPage />}
+            element={<OwnerOnlyElement element={<EditBarbershopPage />} />}
           />
           <Route
             path="/owner/barbershop/:barbershopId/services"
-            element={<ManageServicesPage />}
+            element={<OwnerOnlyElement element={<ManageServicesPage />} />}
           />
           <Route
             path="/owner/barbershop/:barbershopId/staff"
-            element={<ManageStaffPage />}
+            element={<OwnerOnlyElement element={<ManageStaffPage />} />}
           />
           <Route
             path="/owner/barbershop/:barbershopId/bookings"
-            element={<ManageBookingsPage />}
+            element={<OwnerOnlyElement element={<ManageBookingsPage />} />}
           />
           <Route
             path="/owner/barbershop/:barbershopId/profile"
-            element={<BarbershopProfilePage />}
+            element={<OwnerOnlyElement element={<BarbershopProfilePage />} />}
           />
           <Route
             path="/owner/barbershop/:barbershopId/reviews"
-            element={<BarbershopReviewsPage />}
+            element={<OwnerOnlyElement element={<BarbershopReviewsPage />} />}
           />
-          {/* ✅ NEW: Transaction Report Route */}
           <Route
             path="/owner/barbershop/:barbershopId/reports"
-            element={<TransactionReportPage />}
+            element={<OwnerOnlyElement element={<TransactionReportPage />} />}
           />
           <Route
             path="/owner/barbershop/:barbershopId/schedule"
-            element={<ManageSchedulePage />}
+            element={<OwnerOnlyElement element={<ManageSchedulePage />} />}
           />
           {/* Owner Profile Routes */}
-          <Route path="/owner/profile" element={<OwnerProfilePage />} />
+          <Route path="/owner/profile" element={<OwnerOnlyElement element={<OwnerProfilePage />} />} />
           <Route
             path="/owner/change-password"
-            element={<OwnerChangePasswordPage />}
+            element={<OwnerOnlyElement element={<OwnerChangePasswordPage />} />}
           />
         </Route>
 

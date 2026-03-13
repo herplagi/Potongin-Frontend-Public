@@ -1,4 +1,4 @@
-// src/pages/owner/ManageStaffPage.js - UPDATED WITH CONFLICT HANDLING
+// src/pages/owner/ManageStaffPage.js
 import React, { useState, useEffect, useCallback, Fragment } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Dialog, Transition } from "@headlessui/react";
@@ -14,6 +14,7 @@ import {
   FiUpload,
   FiAlertTriangle,
   FiRefreshCw,
+  FiClock,
 } from "react-icons/fi";
 
 const ManageStaffPage = () => {
@@ -38,6 +39,19 @@ const ManageStaffPage = () => {
   // ✅ State untuk reassign modal
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [selectedNewStaff, setSelectedNewStaff] = useState("");
+
+  // ✅ State untuk nonaktif sementara
+  const [showTempDeactivateModal, setShowTempDeactivateModal] = useState(false);
+  const [tempDeactivateStaff, setTempDeactivateStaff] = useState(null);
+  const [tempDeactivateForm, setTempDeactivateForm] = useState({
+    start_time: "",
+    end_time: "",
+    reason: "",
+  });
+  const [tempConflictResult, setTempConflictResult] = useState(null);
+  const [tempResolutionAction, setTempResolutionAction] = useState("");
+  const [tempReassignStaffId, setTempReassignStaffId] = useState("");
+  const [tempRescheduleMap, setTempRescheduleMap] = useState([]);
 
   const fetchStaff = useCallback(async () => {
     try {
@@ -292,6 +306,116 @@ const ManageStaffPage = () => {
     }
   };
 
+  const openTempDeactivateModal = (staff) => {
+    setTempDeactivateStaff(staff);
+    setTempDeactivateForm({
+      start_time: "",
+      end_time: "",
+      reason: "",
+    });
+    setTempConflictResult(null);
+    setTempResolutionAction("");
+    setTempReassignStaffId("");
+    setTempRescheduleMap([]);
+    setShowTempDeactivateModal(true);
+  };
+
+  const handlePreviewTempDeactivate = async () => {
+    if (!tempDeactivateStaff) return;
+    if (!tempDeactivateForm.start_time || !tempDeactivateForm.end_time) {
+      toast.error("Isi tanggal mulai dan selesai.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const response = await api.post(
+        `/barbershops/${barbershopId}/staff/${tempDeactivateStaff.staff_id}/deactivate-preview`,
+        {
+          start_time: tempDeactivateForm.start_time,
+          end_time: tempDeactivateForm.end_time,
+        },
+      );
+
+      setTempConflictResult(response.data);
+
+      if (response.data.has_conflicts) {
+        setTempRescheduleMap(
+          response.data.conflicts.map((c) => ({
+            booking_id: c.booking_id,
+            new_booking_time: "",
+          })),
+        );
+      } else {
+        toast.success("Tidak ada bentrok booking pada rentang waktu ini.");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Gagal mengecek bentrok booking.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleApplyTempDeactivate = async () => {
+    if (!tempDeactivateStaff) return;
+
+    const payload = {
+      start_time: tempDeactivateForm.start_time,
+      end_time: tempDeactivateForm.end_time,
+      reason: tempDeactivateForm.reason,
+    };
+
+    if (tempConflictResult?.has_conflicts) {
+      if (!tempResolutionAction) {
+        toast.error("Pilih tindakan penyelesaian bentrok terlebih dahulu.");
+        return;
+      }
+
+      payload.resolution_action = tempResolutionAction;
+
+      if (tempResolutionAction === "reassign") {
+        if (!tempReassignStaffId) {
+          toast.error("Pilih staff pengganti terlebih dahulu.");
+          return;
+        }
+        payload.new_staff_id = tempReassignStaffId;
+      }
+
+      if (tempResolutionAction === "reschedule") {
+        const hasEmptySchedule = tempRescheduleMap.some(
+          (item) => !item.new_booking_time,
+        );
+        if (hasEmptySchedule) {
+          toast.error("Isi jadwal baru untuk semua booking yang bentrok.");
+          return;
+        }
+        payload.reschedule_map = tempRescheduleMap;
+      }
+    }
+
+    try {
+      setIsSubmitting(true);
+      await api.post(
+        `/barbershops/${barbershopId}/staff/${tempDeactivateStaff.staff_id}/deactivate-temporary`,
+        payload,
+      );
+      toast.success("Nonaktif sementara berhasil disimpan.");
+      setShowTempDeactivateModal(false);
+      fetchStaff();
+    } catch (error) {
+      if (error.response?.status === 409 && error.response?.data?.conflicts) {
+        setTempConflictResult({
+          has_conflicts: true,
+          conflict_count: error.response.data.conflicts.length,
+          conflicts: error.response.data.conflicts,
+        });
+      }
+      toast.error(error.response?.data?.message || "Gagal menyimpan nonaktif sementara.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -401,6 +525,15 @@ const ManageStaffPage = () => {
                     >
                       <FiPower />
                     </button>
+                    {staff.is_active && (
+                      <button
+                        onClick={() => openTempDeactivateModal(staff)}
+                        className="text-amber-600 hover:text-amber-900"
+                        title="Nonaktif Sementara"
+                      >
+                        <FiClock />
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDelete(staff.staff_id)}
                       className="text-red-600 hover:text-red-900"
@@ -835,6 +968,188 @@ const ManageStaffPage = () => {
                     </div>
                   </>
                 )}
+              </Dialog.Panel>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
+
+      {/* ✅ NEW: Modal Nonaktif Sementara */}
+      <Transition appear show={showTempDeactivateModal} as={Fragment}>
+        <Dialog
+          as="div"
+          className="relative z-50"
+          onClose={() => setShowTempDeactivateModal(false)}
+        >
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-40" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4">
+              <Dialog.Panel className="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl transition-all">
+                <Dialog.Title className="text-xl font-bold text-gray-900">
+                  Nonaktifkan Sementara Staff
+                </Dialog.Title>
+
+                <p className="mt-1 text-sm text-gray-600">
+                  Staff: <span className="font-semibold">{tempDeactivateStaff?.name}</span>
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
+                    <input
+                      type="datetime-local"
+                      value={tempDeactivateForm.start_time}
+                      onChange={(e) =>
+                        setTempDeactivateForm((prev) => ({
+                          ...prev,
+                          start_time: e.target.value,
+                        }))
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
+                    <input
+                      type="datetime-local"
+                      value={tempDeactivateForm.end_time}
+                      onChange={(e) =>
+                        setTempDeactivateForm((prev) => ({
+                          ...prev,
+                          end_time: e.target.value,
+                        }))
+                      }
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Alasan</label>
+                  <input
+                    type="text"
+                    value={tempDeactivateForm.reason}
+                    onChange={(e) =>
+                      setTempDeactivateForm((prev) => ({ ...prev, reason: e.target.value }))
+                    }
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="Contoh: Cuti, training, urusan keluarga"
+                  />
+                </div>
+
+                <button
+                  onClick={handlePreviewTempDeactivate}
+                  disabled={isSubmitting}
+                  className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-indigo-300"
+                >
+                  {isSubmitting ? "Mengecek..." : "Cek Bentrok Booking"}
+                </button>
+
+                {tempConflictResult?.has_conflicts && (
+                  <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm text-amber-800 font-semibold">
+                      Ditemukan {tempConflictResult.conflict_count} booking bentrok.
+                    </p>
+
+                    <div className="mt-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pilih Penyelesaian
+                      </label>
+                      <select
+                        value={tempResolutionAction}
+                        onChange={(e) => setTempResolutionAction(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                      >
+                        <option value="">Pilih tindakan</option>
+                        <option value="reassign">Reassign ke staff lain</option>
+                        <option value="reschedule">Reschedule booking customer</option>
+                      </select>
+                    </div>
+
+                    {tempResolutionAction === "reassign" && (
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Staff Pengganti
+                        </label>
+                        <select
+                          value={tempReassignStaffId}
+                          onChange={(e) => setTempReassignStaffId(e.target.value)}
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                        >
+                          <option value="">Pilih staff</option>
+                          {staffList
+                            .filter(
+                              (s) => s.is_active && s.staff_id !== tempDeactivateStaff?.staff_id,
+                            )
+                            .map((s) => (
+                              <option key={s.staff_id} value={s.staff_id}>
+                                {s.name}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {tempResolutionAction === "reschedule" && (
+                      <div className="mt-3 space-y-2 max-h-56 overflow-y-auto">
+                        {tempConflictResult.conflicts.map((conflict, idx) => (
+                          <div key={conflict.booking_id} className="bg-white p-3 rounded border">
+                            <p className="text-sm font-medium text-gray-800">
+                              {conflict.customer_name || "Customer"} - {conflict.service_name || "Layanan"}
+                            </p>
+                            <input
+                              type="datetime-local"
+                              value={tempRescheduleMap[idx]?.new_booking_time || ""}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setTempRescheduleMap((prev) =>
+                                  prev.map((item, index) =>
+                                    index === idx ? { ...item, new_booking_time: value } : item,
+                                  ),
+                                );
+                              }}
+                              className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {tempConflictResult && !tempConflictResult.has_conflicts && (
+                  <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                    Tidak ada bentrok booking. Anda bisa langsung menyimpan nonaktif sementara.
+                  </div>
+                )}
+
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowTempDeactivateModal(false)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleApplyTempDeactivate}
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-amber-300"
+                  >
+                    {isSubmitting ? "Menyimpan..." : "Simpan Nonaktif Sementara"}
+                  </button>
+                </div>
               </Dialog.Panel>
             </div>
           </div>

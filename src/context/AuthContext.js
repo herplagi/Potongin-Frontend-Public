@@ -1,4 +1,3 @@
-// src/context/AuthContext.js - FIXED VERSION
 import React, {
   createContext,
   useState,
@@ -32,14 +31,14 @@ export const AuthProvider = ({ children }) => {
           "Authorization"
         ] = `Bearer ${tokenFromStorage}`;
 
-        // ✅ FIXED: Fetch full user data from API
+        // Fetch full user data from API
         fetchUserData();
       }
     }
     setLoading(false);
   }, []);
 
-  // ✅ NEW: Function to fetch complete user data
+  // Function to fetch complete user data
   const fetchUserData = async () => {
     try {
       const response = await api.get("/auth/profile");
@@ -82,7 +81,7 @@ export const AuthProvider = ({ children }) => {
     setToken(receivedToken);
     api.defaults.headers.common["Authorization"] = `Bearer ${receivedToken}`;
 
-    // ✅ FIXED: Fetch full user data setelah login
+    // Fetch full user data setelah login
     await fetchUserData();
   }, []);
 

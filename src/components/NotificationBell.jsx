@@ -242,7 +242,7 @@ const NotificationBell = () => {
           {/* Footer */}
           {notifications.length > 0 && (
             <div className="p-3 border-t bg-gray-50">
-              <button
+              {/* <button
                 onClick={() => {
                   setIsOpen(false);
                   // Navigate to notifications page if needed
@@ -250,7 +250,7 @@ const NotificationBell = () => {
                 className="w-full text-center text-sm text-indigo-600 hover:text-indigo-800 font-medium py-2 hover:bg-indigo-50 rounded-md transition-colors"
               >
                 Lihat Semua Notifikasi →
-              </button>
+              </button> */}
             </div>
           )}
         </div>

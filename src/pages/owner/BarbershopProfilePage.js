@@ -11,6 +11,8 @@ import {
   FiMapPin,
   FiFileText,
   FiCheckCircle,
+  FiAlertTriangle,
+  FiX,
 } from "react-icons/fi";
 
 const BarbershopProfilePage = () => {
@@ -27,17 +29,33 @@ const BarbershopProfilePage = () => {
   });
   const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
 
-  // ✅ NEW: Facilities state
+  // State fasilitas
   const [allFacilities, setAllFacilities] = useState([]);
   const [selectedFacilities, setSelectedFacilities] = useState([]);
   const [loadingFacilities, setLoadingFacilities] = useState(false);
   const [savingFacilities, setSavingFacilities] = useState(false);
 
-  // ✅ FIXED: Wrap fetchBarbershop with useCallback
+  // State edit profil + modal konfirmasi
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    address: "",
+    city: "",
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
   const fetchBarbershop = useCallback(async () => {
     try {
       const response = await api.get(`/barbershops/my/${barbershopId}`);
       setBarbershop(response.data);
+
+      // Isi form profil dari data yang difetch
+      setProfileForm({
+        name: response.data.name || "",
+        address: response.data.address || "",
+        city: response.data.city || "",
+      });
+
       if (response.data.main_image_url) {
         setImagePreview(`http://localhost:5000${response.data.main_image_url}`);
       }
@@ -51,10 +69,9 @@ const BarbershopProfilePage = () => {
           : null,
       });
 
-      // Set selected facilities
       if (response.data.facilities && Array.isArray(response.data.facilities)) {
         setSelectedFacilities(
-          response.data.facilities.map((f) => f.facility_id),
+          response.data.facilities.map((f) => f.facility_id)
         );
       }
     } catch (error) {
@@ -65,7 +82,6 @@ const BarbershopProfilePage = () => {
     }
   }, [barbershopId]);
 
-  // ✅ FIXED: Wrap fetchAllFacilities with useCallback
   const fetchAllFacilities = useCallback(async () => {
     setLoadingFacilities(true);
     try {
@@ -84,7 +100,6 @@ const BarbershopProfilePage = () => {
     fetchAllFacilities();
   }, [fetchBarbershop, fetchAllFacilities]);
 
-  // ✅ NEW: Toggle facility selection
   const toggleFacility = (facilityId) => {
     setSelectedFacilities((prev) => {
       if (prev.includes(facilityId)) {
@@ -95,7 +110,6 @@ const BarbershopProfilePage = () => {
     });
   };
 
-  // ✅ NEW: Save facilities
   const handleSaveFacilities = async () => {
     setSavingFacilities(true);
     try {
@@ -103,12 +117,58 @@ const BarbershopProfilePage = () => {
         facility_ids: selectedFacilities,
       });
       toast.success("Fasilitas berhasil diperbarui!");
-      fetchBarbershop(); // Refresh data
+      fetchBarbershop();
     } catch (error) {
       console.error("Error saving facilities:", error);
       toast.error(error.response?.data?.message || "Gagal menyimpan fasilitas");
     } finally {
       setSavingFacilities(false);
+    }
+  };
+
+  // Handler field profil (nama & alamat)
+  const handleProfileFieldChange = (e) => {
+    const { name, value } = e.target;
+    setProfileForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const openConfirmModal = () => {
+    if (!barbershop) return;
+
+    const isChanged =
+      profileForm.name.trim() !== (barbershop.name || "").trim() ||
+      profileForm.address.trim() !== (barbershop.address || "").trim();
+
+    if (!isChanged) {
+      toast.info("Tidak ada perubahan nama atau alamat.");
+      return;
+    }
+
+    if (!profileForm.name.trim() || !profileForm.address.trim()) {
+      toast.error("Nama dan alamat wajib diisi.");
+      return;
+    }
+
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleSaveProfileAndResubmit = async () => {
+    setIsSavingProfile(true);
+    try {
+      await api.put(`/barbershops/${barbershopId}`, {
+        name: profileForm.name.trim(),
+        address: profileForm.address.trim(),
+        city: profileForm.city,
+      });
+      toast.success("Perubahan disimpan dan pengajuan ulang berhasil dikirim.");
+      setIsConfirmModalOpen(false);
+      fetchBarbershop();
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Gagal menyimpan perubahan profil."
+      );
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -133,7 +193,7 @@ const BarbershopProfilePage = () => {
       const response = await api.post(
         `/barbershops/${barbershopId}/upload-image`,
         formData,
-        { headers: { "Content-Type": "multipart/form-data" } },
+        { headers: { "Content-Type": "multipart/form-data" } }
       );
       toast.success("Gambar berhasil diupload!");
       setBarbershop((prev) => ({
@@ -236,9 +296,10 @@ const BarbershopProfilePage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Image & Description */}
+        {/* Kolom Kiri - Edit Profil, Foto & Deskripsi */}
         <div className="space-y-6">
-          {/* Main Image Card */}
+
+          {/* Card Foto Utama */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center mb-4">
               <FiImage className="text-indigo-600 mr-2" size={20} />
@@ -292,7 +353,7 @@ const BarbershopProfilePage = () => {
             )}
           </div>
 
-          {/* Description Card */}
+          {/* Card Deskripsi */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center mb-4">
               <FiFileText className="text-indigo-600 mr-2" size={20} />
@@ -317,10 +378,69 @@ const BarbershopProfilePage = () => {
               {isSavingDescription ? "Menyimpan..." : "Simpan Deskripsi"}
             </button>
           </div>
+
+          {/* Card Edit Profil Dasar */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex items-center mb-4">
+              <FiFileText className="text-indigo-600 mr-2" size={20} />
+              <h2 className="text-lg font-semibold text-gray-800">
+                Edit Profil Dasar
+              </h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Ubah nama dan alamat barbershop. Perubahan ini akan diajukan ulang
+              ke admin untuk ditinjau.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nama Barbershop
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={profileForm.name}
+                  onChange={handleProfileFieldChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Alamat
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={profileForm.address}
+                  onChange={handleProfileFieldChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Kota
+                </label>
+                <input
+                  type="text"
+                  name="city"
+                  value={profileForm.city}
+                  readOnly
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-100 text-gray-500 cursor-not-allowed"
+                />
+              </div>
+            </div>
+            <button
+              onClick={openConfirmModal}
+              className="mt-4 w-full bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+            >
+              Simpan Perubahan Profil
+            </button>
+          </div>
         </div>
-        {/* Right Column - Location & Facilities */}
+
+        {/* Kolom Kanan - Lokasi & Fasilitas */}
         <div className="space-y-6">
-          {/* Location Card */}
+          {/* Card Lokasi */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center mb-4">
               <FiMapPin className="text-indigo-600 mr-2" size={20} />
@@ -360,7 +480,7 @@ const BarbershopProfilePage = () => {
             </button>
           </div>
 
-          {/* ✅ NEW: Facilities Card */}
+          {/* Card Fasilitas */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -392,7 +512,7 @@ const BarbershopProfilePage = () => {
                 <div className="grid grid-cols-2 gap-3 mb-4 max-h-96 overflow-y-auto">
                   {allFacilities.map((facility) => {
                     const isSelected = selectedFacilities.includes(
-                      facility.facility_id,
+                      facility.facility_id
                     );
                     return (
                       <button
@@ -443,6 +563,70 @@ const BarbershopProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal Konfirmasi Simpan Profil */}
+      {isConfirmModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg">
+            <div className="p-6 border-b border-gray-200 flex items-start justify-between">
+              <div className="flex items-start">
+                <FiAlertTriangle
+                  className="text-amber-500 mt-1 mr-3 flex-shrink-0"
+                  size={22}
+                />
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Konfirmasi Perubahan Profil
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Jika Anda menyimpan perubahan nama atau alamat, barbershop
+                    akan diajukan ulang untuk review admin dan status menjadi
+                    pending.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsConfirmModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 ml-4 flex-shrink-0"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="text-sm text-gray-700 space-y-2">
+                <p>
+                  <span className="font-medium">Nama baru:</span>{" "}
+                  {profileForm.name}
+                </p>
+                <p>
+                  <span className="font-medium">Alamat baru:</span>{" "}
+                  {profileForm.address}
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 pb-6 flex justify-end gap-3">
+              <button
+                onClick={() => setIsConfirmModalOpen(false)}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                disabled={isSavingProfile}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleSaveProfileAndResubmit}
+                className="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400"
+                disabled={isSavingProfile}
+              >
+                {isSavingProfile
+                  ? "Menyimpan..."
+                  : "Ya, Simpan & Ajukan Ulang"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

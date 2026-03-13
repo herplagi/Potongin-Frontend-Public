@@ -1,4 +1,4 @@
-// src/pages/owner/ManageSchedulePage.js - UPDATED WITH CONFLICT HANDLING
+// src/pages/owner/ManageSchedulePage.js
 import React, { useState, useEffect, useCallback, Fragment } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Dialog, Transition } from '@headlessui/react';
