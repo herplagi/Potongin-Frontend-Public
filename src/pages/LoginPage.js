@@ -61,7 +61,7 @@ const LoginPage = () => {
                     {/* Heading */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-bold text-white">Selamat datang</h1>
-                        <p className="mt-3 text-sm text-slate-400">
+                        <p className="mt-2 text-sm text-slate-400">
                             Belum punya akun?{' '}
                             <Link to="/register" className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
                                 Daftar di sini
@@ -83,7 +83,7 @@ const LoginPage = () => {
                         {/* Email */}
                         <div>
                             <label htmlFor="email" className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
-                                Alamat Email
+                                Email
                             </label>
                             <input
                                 id="email"
@@ -105,7 +105,7 @@ const LoginPage = () => {
                                     Password
                                 </label>
                                 <Link to="/forgot-password" className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
-                                    Lupa Password?
+                                    Lupa Password ?
                                 </Link>
                             </div>
                             <input

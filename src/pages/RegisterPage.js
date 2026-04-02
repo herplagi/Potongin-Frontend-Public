@@ -99,7 +99,7 @@ const RegisterPage = () => {
                     {/* Heading */}
                     <div className="mb-8">
                         <h1 className="text-3xl font-bold text-white">Buat akun baru</h1>
-                        <p className="mt-3 text-sm text-slate-400">
+                        <p className="mt-2 text-sm text-slate-400">
                             Sudah punya akun?{' '}
                             <Link to="/login" className="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
                                 Login di sini
